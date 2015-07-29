@@ -5,19 +5,25 @@ import codecs
 from numpy import *
 import matplotlib.pyplot as plt
 import sys
+import os.path
 
 ######parameters########
 FLAME_MS = 5000.0/2070.0
-IMG_NUM = 200
+IMG_NUM = 2070
 #use it when read from csv data
 #DEG_PER_PIX = 48.4555/(656*0.9756097)
 DEG_PER_PIX = 48.4555/656.0
-CENTER_DEG = 1000
+CENTER_DEG = 0
 
-#CSV file
+#CSV file name, Graph title name, Expetiment name
 FILE_NAME = "OWDemoTW0Pred0"
+
+#Graph
 FILE_PATH = "VRSJCsvData/"
 SAVE_FILE_PATH ="Graph/"
+
+#Image name without 4digi number
+IMG_FILE_NAME = "EX23TW00"
 
 ###grobal variable###
 realDegArray = []
@@ -74,19 +80,28 @@ def readCSVData():
 
 #read data from LineDetect Module
 def readData():
+    if os.path.isfile("CSV/" + FILE_NAME) == True:
+        print "exist CSV file. exit read IMG."
+        return 0
+
     #add new directory which has .py file
     sys.path.append("../LineDetect/")
     import main
     print "///read data from Module///"
     #captured image file name
-    fileName = "EX23TW00"
-    filePathVir = "../cam/EX23TW0V/"
-    filePathReal = "../cam/EX23TW0R/"
+    #/home/Data/
+    filePathVir = "../../../Data/cam/EX23TW0V/"
+    filePathReal = "../../../Data/cam/EX23TW0R/"
     print "/read RealCamData/"
-    fn = filePathReal + fileName
+    fn = filePathReal + IMG_FILE_NAME
     i = 0
     #create instance
     lineDetectClassR = main.lineDetect()
+
+    if os.path.isfile(fn + str(IMG_NUM - 1) + ".png") == False:
+        print fn + str(IMG_NUM - 1) + ".png"
+        print "MAX image number error!"
+        exit(0)
 
     while i < IMG_NUM:
         # dataArray[0]:edge[0], dA[1]:edge[1], dA[2]:width
@@ -103,7 +118,7 @@ def readData():
     global calcCenterDegFlag
     calcCenterDegFlag = False
     i = 0
-    fn = filePathVir + fileName
+    fn = filePathVir + IMG_FILE_NAME
     #create instance
     lineDetectClassV = main.lineDetect()
 
@@ -117,14 +132,14 @@ def readData():
     #print virDegArray
     print "read done"
 
-
-
+#output data to CSV file
 def writeData():
     print "///write data///"
     tempArray = []
     i = 0
+    fn = "CmpCSV/" + FILE_NAME + "LinearInt.csv"
     #get URI with optional setting
-    csvFile = codecs.open("lineaInt.csv","w","utf-8")
+    csvFile = codecs.open(fn, "w", "utf-8")
     #disignate format
     writer = csv.writer(csvFile,CustomFormat() )
 
@@ -459,10 +474,10 @@ if __name__ == "__main__":
     #verifyFunc()
     calcLinearInt(linearIntRealDegArray, realDegArray)
     calcLinearInt(linearIntVirDegArray, virDegArray)
-    #writeData()
+    writeData()
     plotGraph(linearIntRealDegArray, "Real")
     plotGraph(linearIntVirDegArray, "Virtual")
-    plt.savefig(FILE_PATH + SAVE_FILE_PATH + FILE_NAME + "RealAndVirtual2.png")
+    #plt.savefig(FILE_PATH + SAVE_FILE_PATH + FILE_NAME + "RealAndVirtual2.png")
     plt.show()
     #delete graph
     plt.clf()
