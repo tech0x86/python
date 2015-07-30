@@ -8,8 +8,8 @@ import sys
 import os.path
 
 ######parameters########
-FLAME_MS = 5000.0/2070.0
 IMG_NUM = 2070
+FLAME_MS = 5000.0/IMG_NUM
 #use it when read from csv data
 #DEG_PER_PIX = 48.4555/(656*0.9756097)
 DEG_PER_PIX = 48.4555/656.0
@@ -17,8 +17,9 @@ CENTER_DEG = 0
 
 #CSV file name, Graph title name, Expetiment name
 FILE_NAME = "OWDemoTW0Pred0"
+LIN_INT_FN = "CmpCSV/" + FILE_NAME + "LinearInt.csv"
 
-#Graph
+#Graph, CSV
 FILE_PATH = "VRSJCsvData/"
 SAVE_FILE_PATH ="Graph/"
 
@@ -78,27 +79,47 @@ def readCSVData():
     #print virDegArray
     print "read done"
 
-#read data from LineDetect Module
-def readData():
-    if os.path.isfile("CSV/" + FILE_NAME) == True:
-        print "exist CSV file. exit read IMG."
+def readLinearIntCSVData():
+    print "///read LinInt CSV///"
+    csvFile = codecs.open(LIN_INT_FN, "rb","utf-8")
+    reader = csv.reader(csvFile, CustomFormat())
+    for row in reader:
+        linearIntRealDegArray.append(float(row[0]))
+        linearIntVirDegArray.append(float(row[1]))
+    print "RealCam ElementNum = %d" %len(linearIntRealDegArray)
+    print "VirCam ElementNum = %d" %len(linearIntVirDegArray)
+    print "LinInt CSV read done"
+
+#check if exist Linear Interpolation CSV file
+def checkExistLinIntCSV():
+    if os.path.isfile(LIN_INT_FN) == True:
+        print "Exist CSV file!."
+        return 1
+    else:
         return 0
 
+#read data from LineDetect Module
+def readData():
     #add new directory which has .py file
     sys.path.append("../LineDetect/")
     import main
     print "///read data from Module///"
     #captured image file name
     #/home/Data/
-    filePathVir = "../../../Data/cam/EX23TW0V/"
-    filePathReal = "../../../Data/cam/EX23TW0R/"
+    filePathVir = "../../../Data/cam/" + FILE_NAME + "V/"
+    filePathReal = "../../../Data/cam/" + FILE_NAME + "R/"
     print "/read RealCamData/"
     fn = filePathReal + IMG_FILE_NAME
     i = 0
     #create instance
     lineDetectClassR = main.lineDetect()
 
-    if os.path.isfile(fn + str(IMG_NUM - 1) + ".png") == False:
+    if os.path.isfile(fn + "0000.png") == False:
+        print fn + "0000.png"
+        print "open image error!"
+        exit(0)
+
+    elif os.path.isfile(fn + str(IMG_NUM - 1) + ".png") == False:
         print fn + str(IMG_NUM - 1) + ".png"
         print "MAX image number error!"
         exit(0)
@@ -119,6 +140,11 @@ def readData():
     calcCenterDegFlag = False
     i = 0
     fn = filePathVir + IMG_FILE_NAME
+
+    if os.path.isfile(fn + "0000.png") == False:
+        print fn + "0000.png"
+        print "open image error!"
+        exit(0)
     #create instance
     lineDetectClassV = main.lineDetect()
 
@@ -131,6 +157,7 @@ def readData():
     print "EleNum = %d" %len(virDegArray)
     #print virDegArray
     print "read done"
+    return 1
 
 #output data to CSV file
 def writeData():
@@ -319,7 +346,7 @@ def controlCalcVal():
     diff = calcDiffOfDeg(linearIntRealDegArray, linearIntVirDegArray)
     plotDiffGraph(diff)
     plt.savefig(FILE_PATH + SAVE_FILE_PATH + FILE_NAME + "Diff2.png")
-    plt.show()
+    #plt.show()
     plt.clf()
     AbsDiffSTD = std(calcABSDiffOfDeg(linearIntRealDegArray, linearIntVirDegArray))
     #standard deviation
@@ -469,16 +496,17 @@ def plotRMSEGraph(point, xmin, xmax):
 
 if __name__ == "__main__":
     print "///mainFunc///"
-    readData()
-    calcVirLinearInt(virDegArray)
-    #verifyFunc()
-    calcLinearInt(linearIntRealDegArray, realDegArray)
-    calcLinearInt(linearIntVirDegArray, virDegArray)
-    writeData()
+    if checkExistLinIntCSV() == 0:
+        readData()
+        calcVirLinearInt(virDegArray)
+        calcLinearInt(linearIntRealDegArray, realDegArray)
+        calcLinearInt(linearIntVirDegArray, virDegArray)
+        writeData()
+    else:
+        readLinearIntCSVData()
     plotGraph(linearIntRealDegArray, "Real")
     plotGraph(linearIntVirDegArray, "Virtual")
-    #plt.savefig(FILE_PATH + SAVE_FILE_PATH + FILE_NAME + "RealAndVirtual2.png")
+    plt.savefig(FILE_PATH + SAVE_FILE_PATH + FILE_NAME + "RealAndVirtual2.png")
     plt.show()
-    #delete graph
-    plt.clf()
+    plt.clf() #delete graph
     controlCalcVal()

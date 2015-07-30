@@ -70,7 +70,7 @@ def detectValidImage(im_bi):
 def scanEdgePos(im):
     #print "///scan Edge Pos///"
     firstExistAreaSens = 50
-    existAreaSens = 50
+    existAreaSens = 100
     edgePos = []
     centerXPos = int(len(im[0])/2)
     #print EXIST_AREA[0], EXIST_AREA[1]
@@ -83,7 +83,7 @@ def scanEdgePos(im):
         global FIRST_DETECT_EDGE_FLAG
         FIRST_DETECT_EDGE_FLAG = True
     i = EXIST_AREA[0]
-    while i < EXIST_AREA[1] or i < len(im[0]):
+    while i < EXIST_AREA[1] and i < len(im[0]):
         # white is 255, black is 0
         if im[0][i] == 255:
             edgePos.append(calcMidXPosOfVertLine(im, i))
