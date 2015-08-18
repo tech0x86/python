@@ -161,7 +161,7 @@ def readData():
 
 #output data to CSV file
 def writeData():
-    print "///write data///"
+    print "///write CmpCSV data///"
     tempArray = []
     i = 0
     fn = "CmpCSV/" + FILE_NAME + "LinearInt.csv"
@@ -179,7 +179,7 @@ def writeData():
         tempArray = []
         i +=1
     csvFile.close()
-    print "write done"
+    print "write done:" , fn
 
 #########Calc Azmith[deg]#############
 
@@ -504,9 +504,11 @@ if __name__ == "__main__":
         writeData()
     else:
         readLinearIntCSVData()
+    '''#
     plotGraph(linearIntRealDegArray, "Real")
     plotGraph(linearIntVirDegArray, "Virtual")
     plt.savefig(FILE_PATH + SAVE_FILE_PATH + FILE_NAME + "RealAndVirtual2.png")
     plt.show()
     plt.clf() #delete graph
     controlCalcVal()
+    #'''

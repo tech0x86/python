@@ -22,9 +22,11 @@ CSVFileName = []
 SaveGraphPath = "Graph/"
 linearIntRealDegArray = []
 linearIntVirDegArray = []
-RMSEArray = []
-RMSEResultVal = []
-
+myPredArray = []
+speedArray = []
+accelerationArray = []
+#FPS in CmpCSV
+framePerSecond = 1000.0
 ######CSV operate######
 
 class CustomFormat(csv.excel):
@@ -50,7 +52,7 @@ def searchCSVFile():
                 fileNameArray.append(fileName)
                 CSVFileCounter += 1
     print "Input FileNumber:"
-    selectNum = 0#int(raw_input())
+    selectNum = int(raw_input())
     csvFile = fileArray[selectNum]
     print csvFile
     CSVFileName.append(fileNameArray[selectNum])
@@ -75,6 +77,7 @@ def readCSVData(filename):
 def controlCalcVal():
     xMinRmse = -10
     xMaxRmse = 40 + 1
+    RMSEArray = []
     print "///Calc Values///"
     saveGraphPathAndName = SaveGraphPath + CSVFileName[0]
 
@@ -83,14 +86,14 @@ def controlCalcVal():
     #### Degree ####
     plotDegGraph(linearIntRealDegArray,"Real")
     plotDegGraph(linearIntVirDegArray,"Virtual")
-    plt.savefig(saveGraphPathAndName + "RealAndVirtualDeg.png")
-    plt.show()
+    plt.savefig(saveGraphPathAndName + "RealAndVirtualDeg.eps")
+    #plt.show()
     plt.clf()
     #### Difference ####
     diff = calcDiffOfDeg(linearIntRealDegArray, linearIntVirDegArray)
     plotDiffGraph(diff)
     plt.savefig(saveGraphPathAndName + "Diff.png")
-    plt.show()
+    #plt.show()
     plt.clf()
     AbsDiffSTD = std(calcABSDiffOfDeg(linearIntRealDegArray, linearIntVirDegArray))
     #standard deviation
@@ -99,30 +102,39 @@ def controlCalcVal():
     #standard error
     print "AbsDiffSTDE: %f" %AbsDiffSTDE
     #### RMSE ####
-    print "RMSE: %f" %calcRMSE(linearIntRealDegArray,linearIntVirDegArray,0)
+    print "RMSE: %f" %calcRMSE(linearIntRealDegArray, linearIntVirDegArray, 0)
     for i in range(xMinRmse, xMaxRmse):
         rmse = calcRMSE(linearIntRealDegArray, linearIntVirDegArray, i)
         RMSEArray.append(rmse)
     print "Min RMSE :%f" % min(RMSEArray)
-    #index start at 0, RMSE start at - 20ms. So, offset needed.
-    #Index of Min RMSE is latency
     latency = RMSEArray.index(min(RMSEArray)) + xMinRmse
-    RMSEResultVal.append(latency)
-    RMSEResultVal.append(min(RMSEArray))
     print "latency: %d ms" % latency
     plotRMSEGraph(RMSEArray, xMinRmse, xMaxRmse)
     plt.savefig(saveGraphPathAndName + "RMSE.png")
-    plt.show()
+    #plt.show()
     plt.clf()
+
+#calc latency and each RMSE when shifted.
+def calcLatency(base, comparison):
+    print "///calc latency///"
+    minusShift = 10
+    plusShift = 100 + 1
+    calcArray = []
+    #index start at 0, shift start at - 10ms. So, offset needed.
+    #Index of Min RMSE is latency
+    for i in range(-minusShift, plusShift):
+        rmse = calcRMSE(base, comparison, i)
+        calcArray.append(rmse)
+    latency = calcArray.index(min(calcArray)) - minusShift
+    print "Min RMSE:", min(calcArray), "deg"
+    print "latency:", latency, "ms"
+    return latency
 
 # calc RMSE
 def calcRMSE(realCamArray, virCamArray, shiftNum):
     i = 0
     sum = 0.0
     rmse = 0.0
-
-    if len(realCamArray) != len(virCamArray):
-        return "RMSE error"
 
     if shiftNum == 0:
         while i < len(realCamArray):
@@ -185,10 +197,145 @@ def calcABSDiffOfDeg(realCamArray, virCamArray):
     print "Ave ABS Diff:%1.4f" %AbsDiff
     return AbsDiffArray
 
+#calc velocity from real cam azmith
+def calcVelocityFromRealCam():
+    i = 1
+    speedArray.append(0.0)
+    sumSpeed = 0.0
+    while i < len(linearIntRealDegArray):
+        #calc deg/second
+        speed = linearIntRealDegArray[i - 1] - linearIntRealDegArray[i]
+        speed *= framePerSecond
+        sumSpeed += math.fabs(speed)
+        speedArray.append(speed)
+        i += 1
+    print "average velocity[deg/s]: " , sumSpeed/len(speedArray)
+    print "max velocity[deg/s]: ", max(max(speedArray), math.fabs(min(speedArray)))
+
+
+#calc Acceleration from speedArray. store those in accelerationArray[]
+def calcAccFromVelocity():
+    i = 1
+    sumAcc = 0.0
+    accelerationArray.append(0.0)
+    while i < len(speedArray):
+        #calc deg/second
+        acc = speedArray[i - 1] - speedArray[i]
+        accelerationArray.append(acc)
+        sumAcc += math.fabs(acc)
+        i += 1
+    print "average Acceleration[deg/s^2]: ", sumAcc/len(accelerationArray)
+    print "max Acceleration[deg/s^2]: ", max(max(accelerationArray),math.fabs(min(accelerationArray)))
+
+# base data is real cam azmith. First, set delay time(around dozens millisecond).
+# And using this delay time, delay real cam data as virtual azmith
+# Now, you implicate "my prediction".
+# prediction time length means "update" prediction time.
+# (ex 13.3ms prediction time is predict head pose in 13.3ms future.
+# In this interval, predict it 75 times in a second
+# In this data, head pose is deg, prediction method is linear interpolation using speed and interval
+# In myPred, x(t) = v0 * t + x0, using delayArray
+
+def createMyPred(predtime, delay):
+    delay = 26
+    predtime = 100
+    i = 0
+    j = 0
+    #deg/ms
+    speed = 0.0
+    delayData = []
+    presentPos = 0.0
+    # create delayed data
+    while i < delay:
+        delayData.append(0.0)
+        i += 1
+    i = 0
+    while i < len(linearIntRealDegArray):
+        delayData.append(linearIntRealDegArray[i])
+        i += 1
+    # loop while data end
+    while j < len(linearIntRealDegArray):
+        #update speed
+        if predtime != 0 and j % predtime == 0:
+            sumSpeed = 0
+            for k in range(predtime):
+                sumSpeed += speedArray[j-k]
+            aveSpeed = sumSpeed/predtime
+            #speed = speedArray[j] / framePerSecond
+            speed = aveSpeed / framePerSecond
+            presentPos = delayData[j]
+        elif predtime == 0:
+            predPos = delayData[j]
+        predPos = -speed * ((j % predtime) + predtime) + presentPos
+
+        myPredArray.append(predPos)
+        j += 1
+    print len(myPredArray)
+    plt.clf()
+    title = " Delay[ms]:" + str(delay) + " Pred[ms]:" + str(predtime)
+    plotTwoElementGraph(linearIntRealDegArray, "Real", myPredArray, "myPred", title,20)
+    calcLatency(linearIntRealDegArray, myPredArray)
+    plt.show()
+
+def calcMomentLatency():
+    i = 0
+    scanNum = 30
+    latencyArray = []
+    while i < len(linearIntRealDegArray) :
+        j = 0
+        diffArray = []
+        while j < scanNum and i - j > -1 :
+            diffArray.append(math.fabs(linearIntVirDegArray[i] - linearIntRealDegArray[i - j]))
+            j += 1
+        latency = diffArray.index(min(diffArray))
+        latencyArray.append(latency)
+#        print min(diffArray)
+        i += 1
+    plt.clf()
+    #plotTwoElementGraph(linearIntRealDegArray, "real", latencyArray, "latency", "momentLatency", 20)
+    plotGraph(latencyArray, "latency")
+    plt.show()
+
 #######Plot Graph##########
 
-def plotDegGraph(point, name):
+
+
+def plotTwoElementGraph(point1, name1, point2, name2, title, ylim):
+    print "///plot Two Graph///"
+    #linspace(開始値，終了値，分割数)”で，線形数列を作成。
+    x1 = linspace(0, len(point1), len(point1))
+    plt.plot(x1, point1, label = name1)
+    x2 = linspace(0, len(point2), len(point2))
+    plt.plot(x2, point2, label = name2)
+
+    plt.legend(loc = 'upper right') # show data label
+    plt.xlabel("Time[ms]", fontsize = 20)
+    plt.ylabel("[deg]", fontsize = 20)
+    #draw dashed line. (y[range], -x length, x length , style)
+    plt.hlines(0, -100, 10000, linestyles="-")
+    plt.ylim(-ylim, ylim)
+    plt.xlim(0,5000)
+    plt.title(CSVFileName[0] + title, fontsize = 20 )
+
+def plotGraph(point, name):
     print "///plotGraph///"
+    #setting Fontsize to all Graph
+    plt.rcParams['font.size'] = 17
+    #linspace(開始値，終了値，分割数)”で，線形数列を作成。
+    x = linspace(0, len(point), len(point))
+    plt.plot(x, point, label = name)
+    plt.legend(loc = 'upper right') # show data label
+    plt.xlabel("Time[ms]", fontsize = 20)
+    #plt.ylabel("Azmith[deg]", fontsize = 20)
+    #draw dashed line. (y[range], -x length, x length , style)
+    plt.hlines(0, -100, 10000, linestyles="-")
+    #plt.ylim(-20,20)
+    plt.xlim(0,1000)
+    #plt.title(CSVFileName[0] + " Real and Virtual Azmith", fontsize = 20 )
+
+
+def plotDegGraph(point, name):
+    print "///plotDegGraph///"
     #setting Fontsize to all Graph
     plt.rcParams['font.size'] = 17
     #linspace(開始値，終了値，分割数)”で，線形数列を作成。
@@ -217,10 +364,10 @@ def plotDiffGraph(point):
     plt.xlim(0,5000)
     plt.title(CSVFileName[0] + " Difference Azmith", fontsize = 20 )
 
-
 def plotRMSEGraph(point, xmin, xmax):
     print "///plotRMSEGraph///"
-
+    minRMSE = min(point)
+    latency = point.index(min(point)) + xmin
     #linspace(開始値，終了値，分割数)”で，線形数列を作成。
     x = linspace(xmin, xmax - 1, len(point))
     plt.plot(x, point, label = "RMSE", linewidth=2)
@@ -228,14 +375,39 @@ def plotRMSEGraph(point, xmin, xmax):
     plt.xlabel("Shift Time[ms]", fontsize = 20)
     plt.ylabel("RMSE[deg]", fontsize = 20)
     plt.vlines(0, -10, 50, linestyles="-")
-    plt.vlines(RMSEResultVal[0], -10, 2, linestyles="-", colors="red", linewidth=2)
-    annotateData = str(round(RMSEResultVal[1],2)) + "deg, " + str(RMSEResultVal[0]) + "ms"
+    plt.vlines(latency, -10, 2, linestyles="-", colors="red", linewidth=2)
+    annotateData = str(round(minRMSE, 2)) + "deg, " + str(latency) + "ms"
     plt.annotate(annotateData,
-            xy=(RMSEResultVal[0], 2), xycoords='data',
+            xy=(latency, 2), xycoords='data',
             xytext=(+10, +30), textcoords='offset points', fontsize=17,
             arrowprops=dict(arrowstyle="->", connectionstyle="arc3,rad=.2"))
     plt.ylim(0,5)
     plt.title(CSVFileName[0] + "Shift Time and RMSE", fontsize = 20 )
+
+def plotVelocityGraph(point):
+    #linspace(開始値，終了値，分割数)”で，線形数列を作成。
+    x = linspace(0, len(point), len(point))
+    plt.plot(x, point, label = "Velocity", linewidth=2)
+    plt.legend(loc = 'upper right') # show data label
+    plt.xlabel("Time[ms]", fontsize = 18)
+    plt.ylabel("Velocity[deg/s]", fontsize = 18)
+    plt.hlines(0, -100, 10000, linestyles="-")
+    #plt.ylim(-5,5)
+    plt.xlim(0,5000)
+    plt.title(CSVFileName[0] + " Speed", fontsize = 20 )
+
+
+def plotAccelGraph(point):
+    #linspace(開始値，終了値，分割数)”で，線形数列を作成。
+    x = linspace(0, len(point), len(point))
+    plt.plot(x, point, label = "Acceleration", linewidth=2)
+    plt.legend(loc = 'upper right') # show data label
+    plt.xlabel("Time[ms]", fontsize = 18)
+    plt.ylabel("Acceleration[deg/s^2]", fontsize = 18)
+    plt.hlines(0, -100, 10000, linestyles="-")
+    #plt.ylim(-5,5)
+    plt.xlim(0,5000)
+    plt.title(CSVFileName[0] + " Accel", fontsize = 20 )
 
 
 if __name__ == "__main__":
@@ -243,3 +415,14 @@ if __name__ == "__main__":
     csvFile = searchCSVFile()
     readCSVData(csvFile)
     controlCalcVal()
+    calcVelocityFromRealCam()
+    plotVelocityGraph(speedArray)
+    #plt.show()
+    plt.clf()
+    calcAccFromVelocity()
+    plotAccelGraph(accelerationArray)
+    calcMomentLatency()
+    #plt.show()
+    #createMyPred(0,0)
+
+
