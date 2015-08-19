@@ -279,8 +279,9 @@ def createMyPred(predtime, delay):
 
 def calcMomentLatency():
     i = 0
-    scanNum = 30
+    scanNum = 50
     latencyArray = []
+    tmpLatency = []
     while i < len(linearIntRealDegArray) :
         j = 0
         diffArray = []
@@ -288,8 +289,14 @@ def calcMomentLatency():
             diffArray.append(math.fabs(linearIntVirDegArray[i] - linearIntRealDegArray[i - j]))
             j += 1
         latency = diffArray.index(min(diffArray))
+        #deal with error latency
+        tmpLatency.append(latency)
+        if latency > median(tmpLatency) + 5 or latency < median(tmpLatency) - 5:
+            if len(latencyArray) > 1:
+                latency = latencyArray[i-1]
+        if len(tmpLatency) > 50:
+            tmpLatency.pop(0)
         latencyArray.append(latency)
-#        print min(diffArray)
         i += 1
     plt.clf()
     #plotTwoElementGraph(linearIntRealDegArray, "real", latencyArray, "latency", "momentLatency", 20)
