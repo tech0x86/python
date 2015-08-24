@@ -14,7 +14,7 @@ import csv
 import codecs
 from numpy import *
 import matplotlib.pyplot as plt
-import sys
+
 
 #######parameters########
 SearchCSVFilePath = "/Users/kento24n452/GitHub/python/CSVcontrol/CmpCSV"
@@ -80,14 +80,14 @@ def controlCalcVal():
     RMSEArray = []
     print "///Calc Values///"
     saveGraphPathAndName = SaveGraphPath + CSVFileName[0]
+    noLatencyVirCam = []
 
     print "-----------%s----------" %CSVFileName[0]
-
     #### Degree ####
     plotDegGraph(linearIntRealDegArray,"Real")
     plotDegGraph(linearIntVirDegArray,"Virtual")
     plt.savefig(saveGraphPathAndName + "RealAndVirtualDeg.eps")
-    #plt.show()
+    plt.show()
     plt.clf()
     #### Difference ####
     diff = calcDiffOfDeg(linearIntRealDegArray, linearIntVirDegArray)
@@ -111,8 +111,45 @@ def controlCalcVal():
     print "latency: %d ms" % latency
     plotRMSEGraph(RMSEArray, xMinRmse, xMaxRmse)
     plt.savefig(saveGraphPathAndName + "RMSE.png")
-    #plt.show()
+    plt.show()
     plt.clf()
+    j = 0
+    while j < len(linearIntVirDegArray) - latency:
+        noLatencyVirCam.append(linearIntVirDegArray[latency + j])
+        j += 1
+    calcLatency(linearIntRealDegArray, noLatencyVirCam)
+    diff = calcDiffOfDeg(linearIntRealDegArray, noLatencyVirCam)
+    plotDiffGraph(diff)
+    plt.show()
+    plt.clf()
+
+# calc RealCamDeg scale to fit virtual.
+# present scale is real > virtual.
+def calcRealCamScale():
+    print "calc real Cam scale"
+    latency = 26
+    scaleBandStep = 0.001
+    scale = 1.00
+    i = 1
+    minRMSE = calcRMSE(linearIntRealDegArray, linearIntVirDegArray, latency)
+    while i < 500:
+        scaledRealCamDeg = []
+        j = 0
+        while j < len(linearIntRealDegArray):
+            ratio = scale - (scaleBandStep * i)
+            scaledVal = linearIntRealDegArray[j] * ratio
+            scaledRealCamDeg.append(scaledVal)
+            j += 1
+        tmpRMSE = calcRMSE(scaledRealCamDeg, linearIntVirDegArray, latency)
+        if tmpRMSE < minRMSE:
+            minRMSE = tmpRMSE
+        else:
+            print "find scale:", ratio, " RMSE:", minRMSE
+            global linearIntRealDegArray
+            linearIntRealDegArray = scaledRealCamDeg
+            break
+        i += 1
+    return scaledRealCamDeg
 
 #calc latency and each RMSE when shifted.
 def calcLatency(base, comparison):
@@ -136,34 +173,40 @@ def calcRMSE(realCamArray, virCamArray, shiftNum):
     sum = 0.0
     rmse = 0.0
 
+    if len(realCamArray) > len(virCamArray):
+        scanNum = len(virCamArray)
+    else:
+        scanNum = len(realCamArray)
+
+
     if shiftNum == 0:
-        while i < len(realCamArray):
+        while i < scanNum:
             diff = virCamArray[i] - realCamArray[i]
             pow = math.pow(diff, 2)
             sum += pow
             i += 1
-        ave = sum/len(realCamArray)
+        ave = sum/scanNum
         rmse = math.sqrt(ave)
 
     #shift virCam to future
     elif shiftNum > 0:
-        while i < len(realCamArray) - shiftNum:
+        while i < scanNum - shiftNum:
              diff = virCamArray[i + shiftNum] - realCamArray[i]
              pow = math.pow(diff, 2)
              sum += pow
              i += 1
-        ave = sum/len(realCamArray)
+        ave = sum/scanNum
         rmse = math.sqrt(ave)
 
     #shift realCam to future
     elif shiftNum < 0:
        shiftNum *= -1
-       while i < len(realCamArray) - shiftNum:
+       while i < scanNum - shiftNum:
             diff = virCamArray[i] - realCamArray[i + shiftNum]
             pow = math.pow(diff, 2)
             sum += pow
             i += 1
-       ave = sum/len(realCamArray)
+       ave = sum/scanNum
        rmse = math.sqrt(ave)
 
     return rmse
@@ -174,11 +217,17 @@ def calcDiffOfDeg(realCamArray, virCamArray):
     i = 0
     diff = 0.0
     diffArray = []
-    while i < len(realCamArray):
+
+    if len(realCamArray) > len(virCamArray):
+        scanNum = len(virCamArray)
+    else:
+        scanNum = len(realCamArray)
+    print scanNum
+    while i < scanNum:
         diffArray.append(virCamArray[i] - realCamArray[i])
         diff += diffArray[i]
         i += 1
-    diff /= len(realCamArray)
+    diff /= scanNum
     print "Diff:%1.4f" %diff
     return diffArray
 
@@ -238,13 +287,14 @@ def calcAccFromVelocity():
 
 def createMyPred(predtime, delay):
     delay = 26
-    predtime = 100
+    predtime = 9
     i = 0
     j = 0
     #deg/ms
     speed = 0.0
     delayData = []
     presentPos = 0.0
+    predPos = 0.0
     # create delayed data
     while i < delay:
         delayData.append(0.0)
@@ -253,10 +303,13 @@ def createMyPred(predtime, delay):
     while i < len(linearIntRealDegArray):
         delayData.append(linearIntRealDegArray[i])
         i += 1
-    # loop while data end
+    # loop while data end in 5sec
     while j < len(linearIntRealDegArray):
         #update speed
-        if predtime != 0 and j % predtime == 0:
+        if predtime == 0:
+            predPos = delayData[j]
+
+        elif j % predtime == 0:
             sumSpeed = 0
             for k in range(predtime):
                 sumSpeed += speedArray[j-k]
@@ -264,9 +317,8 @@ def createMyPred(predtime, delay):
             #speed = speedArray[j] / framePerSecond
             speed = aveSpeed / framePerSecond
             presentPos = delayData[j]
-        elif predtime == 0:
-            predPos = delayData[j]
-        predPos = -speed * ((j % predtime) + predtime) + presentPos
+        else:
+            predPos = -speed * ((j % predtime) + predtime) + presentPos
 
         myPredArray.append(predPos)
         j += 1
@@ -321,7 +373,7 @@ def plotTwoElementGraph(point1, name1, point2, name2, title, ylim):
     #draw dashed line. (y[range], -x length, x length , style)
     plt.hlines(0, -100, 10000, linestyles="-")
     plt.ylim(-ylim, ylim)
-    plt.xlim(0,5000)
+    plt.xlim(0, 1000)
     plt.title(CSVFileName[0] + title, fontsize = 20 )
 
 def plotGraph(point, name):
@@ -421,6 +473,7 @@ if __name__ == "__main__":
     print "Calc & Create main Func"
     csvFile = searchCSVFile()
     readCSVData(csvFile)
+    calcRealCamScale()
     controlCalcVal()
     calcVelocityFromRealCam()
     plotVelocityGraph(speedArray)
@@ -430,6 +483,8 @@ if __name__ == "__main__":
     plotAccelGraph(accelerationArray)
     calcMomentLatency()
     #plt.show()
-    #createMyPred(0,0)
+    #createMyPred(10,26)
+
+
 
 

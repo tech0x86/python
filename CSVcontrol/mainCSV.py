@@ -13,6 +13,7 @@ FLAME_MS = 5000.0/IMG_NUM
 #use it when read from csv data
 #DEG_PER_PIX = 48.4555/(656*0.9756097)
 DEG_PER_PIX = 48.4555/656.0
+#0.07386509146341
 CENTER_DEG = 0
 
 #CSV file name, Graph title name, Expetiment name
