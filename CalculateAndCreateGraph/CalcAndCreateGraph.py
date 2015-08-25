@@ -87,7 +87,7 @@ def controlCalcVal():
     plotDegGraph(linearIntRealDegArray,"Real")
     plotDegGraph(linearIntVirDegArray,"Virtual")
     plt.savefig(saveGraphPathAndName + "RealAndVirtualDeg.eps")
-    plt.show()
+    #plt.show()
     plt.clf()
     #### Difference ####
     diff = calcDiffOfDeg(linearIntRealDegArray, linearIntVirDegArray)
@@ -111,26 +111,26 @@ def controlCalcVal():
     print "latency: %d ms" % latency
     plotRMSEGraph(RMSEArray, xMinRmse, xMaxRmse)
     plt.savefig(saveGraphPathAndName + "RMSE.png")
-    plt.show()
+    #plt.show()
     plt.clf()
     j = 0
     while j < len(linearIntVirDegArray) - latency:
         noLatencyVirCam.append(linearIntVirDegArray[latency + j])
         j += 1
-    calcLatency(linearIntRealDegArray, noLatencyVirCam)
+    #calcLatency(linearIntRealDegArray, noLatencyVirCam)
     diff = calcDiffOfDeg(linearIntRealDegArray, noLatencyVirCam)
     plotDiffGraph(diff)
-    plt.show()
+    #plt.show()
     plt.clf()
 
 # calc RealCamDeg scale to fit virtual.
 # present scale is real > virtual.
 def calcRealCamScale():
-    print "calc real Cam scale"
-    latency = 26
+    print "///calc real Cam scale///"
     scaleBandStep = 0.001
     scale = 1.00
     i = 1
+    latency = calcLatency(linearIntRealDegArray, linearIntVirDegArray)
     minRMSE = calcRMSE(linearIntRealDegArray, linearIntVirDegArray, latency)
     while i < 500:
         scaledRealCamDeg = []
@@ -222,7 +222,7 @@ def calcDiffOfDeg(realCamArray, virCamArray):
         scanNum = len(virCamArray)
     else:
         scanNum = len(realCamArray)
-    print scanNum
+    #print scanNum
     while i < scanNum:
         diffArray.append(virCamArray[i] - realCamArray[i])
         diff += diffArray[i]
@@ -253,7 +253,7 @@ def calcVelocityFromRealCam():
     sumSpeed = 0.0
     while i < len(linearIntRealDegArray):
         #calc deg/second
-        speed = linearIntRealDegArray[i - 1] - linearIntRealDegArray[i]
+        speed = linearIntRealDegArray[i] - linearIntRealDegArray[i-1]
         speed *= framePerSecond
         sumSpeed += math.fabs(speed)
         speedArray.append(speed)
@@ -269,7 +269,7 @@ def calcAccFromVelocity():
     accelerationArray.append(0.0)
     while i < len(speedArray):
         #calc deg/second
-        acc = speedArray[i - 1] - speedArray[i]
+        acc = speedArray[i] - speedArray[i-1]
         accelerationArray.append(acc)
         sumAcc += math.fabs(acc)
         i += 1
@@ -318,7 +318,7 @@ def createMyPred(predtime, delay):
             speed = aveSpeed / framePerSecond
             presentPos = delayData[j]
         else:
-            predPos = -speed * ((j % predtime) + predtime) + presentPos
+            predPos = speed * ((j % predtime) + predtime) + presentPos
 
         myPredArray.append(predPos)
         j += 1
@@ -351,9 +351,11 @@ def calcMomentLatency():
         latencyArray.append(latency)
         i += 1
     plt.clf()
+    plt.ylabel("Latency[time]", fontsize = 20)
+    plt.xlabel("Time[ms]", fontsize = 20)
     #plotTwoElementGraph(linearIntRealDegArray, "real", latencyArray, "latency", "momentLatency", 20)
     plotGraph(latencyArray, "latency")
-    plt.show()
+    #plt.show()
 
 #######Plot Graph##########
 
@@ -406,7 +408,7 @@ def plotDegGraph(point, name):
     #draw dashed line. (y[range], -x length, x length , style)
     plt.hlines(0, -100, 10000, linestyles="-")
     plt.ylim(-20,20)
-    plt.xlim(0,5000)
+    plt.xlim(0,1000)
     plt.title(CSVFileName[0] + " Real and Virtual Azmith", fontsize = 20 )
 
 def plotDiffGraph(point):
