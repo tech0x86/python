@@ -52,7 +52,7 @@ def searchCSVFile():
                 fileNameArray.append(fileName)
                 CSVFileCounter += 1
     print "Input FileNumber:"
-    selectNum = 0#int(raw_input())
+    selectNum = int(raw_input())
     csvFile = fileArray[selectNum]
     print csvFile
     CSVFileName.append(fileNameArray[selectNum])
@@ -81,13 +81,22 @@ def controlCalcVal():
     RMSEArray = []
     #setting Fontsize to all Graph
     plt.rcParams['font.size'] = 17
+
     #indicater   0:not show, 1: show()
-    #0:Degree, 1:Diff, 2:Velocity, 3:Accel, 4:RMSE,
-    #5:no latency Diff and V, 6:Moment latency and V
-    pltGraphStateArray = [1, 0, 0, 0, 1,
-                          1, 1]
+                        #0:Degree, 1:Diff, 2:Velocity, 3:Accel, 4:RMSE,
+                        #5:no latency Diff and V, 6:Moment latency and V
+    pltGraphStateArray = [1, 0, 0, 0, 0,
+                          0, 0]
     saveGraphPathAndName = SaveGraphPath + CSVFileName[0]
     noLatencyVirCam = []
+
+    calcVelocityFromRealCam()
+    if pltGraphStateArray[2]:
+        plotVelocityGraph(speedArray)
+        plt.show()
+    plt.clf()
+    #scaling real cam after calc speed
+    calcRealCamScale()
 
     print "-----------%s----------" %CSVFileName[0]
     #### Degree ####
@@ -100,7 +109,6 @@ def controlCalcVal():
     plt.clf()
     #### Difference ####
     diff = calcDiffOfDeg(linearIntRealDegArray, linearIntVirDegArray)
-    plt.savefig(saveGraphPathAndName + "Diff.png")
     if pltGraphStateArray[1]:
         plotDiffGraph(diff)
         plt.show()
@@ -114,7 +122,6 @@ def controlCalcVal():
     print "AbsDiffSTDE: %f" %AbsDiffSTDE
     #### RMSE ####
 
-    calcVelocityFromRealCam()
     if pltGraphStateArray[2]:
         plotVelocityGraph(speedArray)
         plt.show()
@@ -147,7 +154,7 @@ def controlCalcVal():
     NoLateDiff = calcDiffOfDeg(linearIntRealDegArray, noLatencyVirCam)
     #plotTwoElementGraph(linearIntRealDegArray, "real", noLatencyVirCam, "noLateVir", "", 20)
     if pltGraphStateArray[5]:
-        plotDiffGraph(NoLateDiff)
+        plotNoLateDiffAndVelocityGraph(NoLateDiff, speedArray)
         plt.savefig(saveGraphPathAndName + "NoLateDiff+V.eps")
         plt.savefig(saveGraphPathAndName + "NoLateDiff+V.ps")
         plt.show()
@@ -155,7 +162,7 @@ def controlCalcVal():
 
     momentLatency = calcMomentLatency()
     if pltGraphStateArray[6]:
-        plotMomentLatencyAndVelocity(momentLatency, speedArray)
+        plotMomentLatencyAndVelocity(momentLatency, speedArray, latency)
         plt.savefig(saveGraphPathAndName + "MomentLatency+V.eps")
         plt.savefig(saveGraphPathAndName + "MomentLatency+V.ps")
         plt.show()
@@ -399,18 +406,29 @@ def calcMomentLatency():
     scanNum = 50
     latencyArray = []
     tmpLatency = []
+    #scan real data
     while i < len(linearIntRealDegArray) :
         j = 0
         diffArray = []
+        diffArrayIntv = []
         while j < scanNum and i - j > -1 :
             diffArray.append(math.fabs(linearIntVirDegArray[i] - linearIntRealDegArray[i - j]))
             j += 1
         latency = diffArray.index(min(diffArray))
+
+        #calc over compensate time
+        if latency == 0:
+            j = 0
+            while j < scanNum and i + j < len(linearIntRealDegArray) :
+                diffArrayIntv.append(math.fabs(linearIntVirDegArray[i] - linearIntRealDegArray[i + j]))
+                j += 1
+                latency = -diffArrayIntv.index(min(diffArrayIntv))
+
         #deal with error latency
         tmpLatency.append(latency)
         if latency > median(tmpLatency) + 5 or latency < median(tmpLatency) - 5:
             if len(latencyArray) > 1:
-                latency = latencyArray[i-1]
+                latency = latencyArray[i - 1]
         if len(tmpLatency) > 50:
             tmpLatency.pop(0)
         latencyArray.append(latency)
@@ -463,17 +481,18 @@ def plotNoLateDiffAndVelocityGraph(point1,point2):
     ax2.plot(point2, 'b', linestyle="--")
     fs_label = 20
     ax1.set_xlabel('Time[ms]', fontsize = fs_label)
-    ax1.set_ylabel('Difference Azmith[deg]', fontsize = fs_label)
+    ax1.set_ylabel('Difference of Azmith[deg]', fontsize = fs_label)
     ax1.set_xlim(0, 1000)
-    ax1.set_ylim(5, -5)
+    #invert range to (min,max)
+    ax1.set_ylim(-1, 1)
 
-    ax2.set_ylabel('Angular Velocity[deg/s]', fontsize = fs_label)
-    ax2.set_ylim(250, -250)
+    #ax2.set_ylabel('Angular Velocity[deg/s]', fontsize = fs_label)
+    ax2.set_ylim(-250, 250)
     plt.hlines(0, -100, 10000, linestyles="-")
     ax1.grid(True)
 
 
-def plotMomentLatencyAndVelocity(point1,point2):
+def plotMomentLatencyAndVelocity(momentLatency, velocity, latency):
     print "///plot Moment Late And Velocity Graph///"
     #In 2axis graph, it is hard to paste label. therefore, use eazy draw to ps file
 
@@ -481,17 +500,17 @@ def plotMomentLatencyAndVelocity(point1,point2):
     ax1 = fig.add_subplot(111)
     ax2 = ax1.twinx()
 
-    ax1.plot(point1, "g",)
-    ax2.plot(point2, 'b', linestyle="--")
+    ax1.plot(momentLatency, "g",)
+    ax2.plot(velocity, 'b', linestyle="--")
     fs_label = 20
     ax1.set_xlabel('Time[ms]', fontsize = fs_label)
-    ax1.set_ylabel('Moment Latency[ms]', fontsize = fs_label)
+    ax1.set_ylabel('Latency at the each moment[ms]', fontsize = fs_label)
     ax1.set_xlim(0, 1000)
-    ax1.set_ylim(0,35)
+    ax1.set_ylim(0, 35)
 
-    ax2.set_ylabel('Angular Velocity[deg/s]', fontsize = fs_label)
-    ax2.set_ylim(250, -250)
-    plt.hlines(0, -100, 10000, linestyles="-")
+    #ax2.set_ylabel('Angular Velocity[deg/s]', fontsize = fs_label)
+    ax2.set_ylim(-250, 250)
+    plt.hlines(0, -100, 10000, linestyle="-")
     ax1.grid(True)
 
 def plotDegGraph(point, name):
@@ -533,7 +552,7 @@ def plotRMSEGraph(point, xmin, xmax):
     plt.plot(x, point, label = "RMSE", linewidth=2)
     plt.legend(loc = 'upper right') # show data label
     plt.xlabel("Shift Time[ms]", fontsize = 20)
-    plt.ylabel("RMSE[deg]", fontsize = 20)
+    plt.ylabel("RMSE[deg]:Real and Virtual", fontsize = 20)
     plt.vlines(0, -10, 50, linestyles="-")
     plt.vlines(latency, -10, 2, linestyles="--", colors="red", linewidth=2)
     annotateData = str(round(minRMSE, 2)) + "deg, " + str(latency) + "ms"
@@ -576,7 +595,6 @@ if __name__ == "__main__":
     print "Calc & Create main Func"
     csvFile = searchCSVFile()
     readCSVData(csvFile)
-    calcRealCamScale()
     controlCalcVal()
     #createMyPred(10,26)
 
