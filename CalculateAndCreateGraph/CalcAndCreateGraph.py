@@ -84,9 +84,9 @@ def controlCalcVal():
 
     #indicater   0:not show, 1: show()
                         #0:Degree, 1:Diff, 2:Velocity, 3:Accel, 4:RMSE,
-                        #5:no latency Diff and V, 6:Moment latency and V
-    pltGraphStateArray = [1, 0, 0, 0, 0,
-                          0, 0]
+                        #5:no latency Diff and V, 6:Moment latency and V, 7:Moment latency and Deg
+    pltGraphStateArray = [0, 0, 0, 0, 0,
+                          0, 0, 1]
     saveGraphPathAndName = SaveGraphPath + CSVFileName[0]
     noLatencyVirCam = []
 
@@ -161,12 +161,17 @@ def controlCalcVal():
     plt.clf()
 
     momentLatency = calcMomentLatency()
+    print "momentLatencyNum:",len(momentLatency)
     if pltGraphStateArray[6]:
         plotMomentLatencyAndVelocity(momentLatency, speedArray, latency)
         plt.savefig(saveGraphPathAndName + "MomentLatency+V.eps")
         plt.savefig(saveGraphPathAndName + "MomentLatency+V.ps")
         plt.show()
     plt.clf()
+
+    #### moment Latency and Degree ####
+    calcMomentLatencyAtDeg(momentLatency, pltGraphStateArray[7], latency)
+
 
 # calc RealCamDeg scale to fit virtual.
 # present scale is real > virtual.
@@ -175,9 +180,13 @@ def calcRealCamScale():
     scaleBandStep = 0.001
     scale = 1.00
     i = 1
+    scaledRealCamDeg = []
     latency = calcLatency(linearIntRealDegArray, linearIntVirDegArray)
     minRMSE = calcRMSE(linearIntRealDegArray, linearIntVirDegArray, latency)
     while i < 500:
+        tmpScaledRealCamDeg = scaledRealCamDeg
+        if i==1:
+            tmpScaledRealCamDeg = linearIntRealDegArray
         scaledRealCamDeg = []
         j = 0
         while j < len(linearIntRealDegArray):
@@ -189,12 +198,12 @@ def calcRealCamScale():
         if tmpRMSE < minRMSE:
             minRMSE = tmpRMSE
         else:
-            print "find scale:", ratio, " RMSE:", minRMSE
+            print "find scale:", ratio + scaleBandStep, " minRMSE:", minRMSE
             global linearIntRealDegArray
-            linearIntRealDegArray = scaledRealCamDeg
+            linearIntRealDegArray = tmpScaledRealCamDeg
             break
         i += 1
-    return scaledRealCamDeg
+    return tmpScaledRealCamDeg
 
 #calc latency and each RMSE when shifted.
 def calcLatency(base, comparison):
@@ -347,6 +356,7 @@ def calcSmoothing(array, interval):
     return resultArray
 
 
+
 # base data is real cam azmith. First, set delay time(around dozens millisecond).
 # And using this delay time, delay real cam data as virtual azmith
 # Now, you implicate "my prediction".
@@ -435,6 +445,39 @@ def calcMomentLatency():
         i += 1
     return latencyArray
 
+def calcMomentLatencyAtDeg(momentLatency, plotIndicater, latency):
+    #turntable degree range +/-
+    degBand = 20
+    eleNum = (degBand * 2) + 1
+    #[0]-[40] -20~0~20 len:41
+    momentLatencyAtDeg = [[] for j in range(eleNum)]
+    momentLatencyAtDegAve = [0 for j in range(eleNum)]
+    momentLatencyAtDegSTDE = [0 for j in range(eleNum)]
+
+    i=0
+    #calc momentLatency each Deg
+    while i < len(linearIntRealDegArray):
+        degree = int(round(linearIntRealDegArray[i],0))
+        index = degree + degBand
+        momentLatencyAtDeg[index].append(momentLatency[i])
+        i += 1
+
+    index = 0
+    while index < eleNum:
+        # if valid data
+        if len(momentLatencyAtDeg[index]) > 0:
+            momentLatencyAtDegAve[index] = mean(momentLatencyAtDeg[index])
+            momentLatencyAtDegSTDE[index] = std(momentLatencyAtDeg[index]) / sqrt(len(momentLatencyAtDeg[index]))
+        index += 1
+
+    #print momentLatencyAtDegAve
+    if plotIndicater:
+        plotMomentLatencyAndDegGraph(momentLatencyAtDegAve, momentLatencyAtDegSTDE, latency)
+        plt.savefig(SaveGraphPath + CSVFileName[0] + "MomentLatencyAndDeg.eps")
+        plt.savefig(SaveGraphPath + CSVFileName[0] + "MomentLatencyAndDeg.ps")
+        plt.show()
+        plt.clf()
+
 #######Plot Graph##########
 
 def plotTwoElementGraph(point1, name1, point2, name2, title, ylim):
@@ -466,7 +509,7 @@ def plotGraph(point, name):
     #draw dashed line. (y[range], -x length, x length , style)
     plt.hlines(0, -100, 10000, linestyles="-")
     #plt.ylim(-20,20)
-    plt.xlim(0,1000)
+    #plt.xlim(0,1000)
     plt.grid(True)
     #plt.title(CSVFileName[0] + " Real and Virtual Azmith", fontsize = 20 )
 
@@ -512,6 +555,32 @@ def plotMomentLatencyAndVelocity(momentLatency, velocity, latency):
     ax2.set_ylim(-250, 250)
     plt.hlines(0, -100, 10000, linestyle="-")
     ax1.grid(True)
+
+
+#moment latency is y axis, azmith is x axis
+def plotMomentLatencyAndDegGraph(aveLatency, stdeLatency, latency):
+    print "///plotMomentLatencyAndDegGraph///"
+
+    x = linspace(-20, 20, 41)
+    yerr1 = stdeLatency #lower
+    yerr2 = stdeLatency # upper bound
+
+    fig = plt.figure()
+    ax = fig.add_subplot(111)
+    ax.errorbar(x, aveLatency, yerr = [yerr1, yerr2],
+                fmt='.', label = "latency")
+    ax.set_xlim(-20, 20)
+    ax.set_ylim(latency - 3, latency + 3)
+
+
+    plt.legend(loc = 'upper right') # show data label
+    plt.xlabel("Azmith[deg]", fontsize = 20)
+    plt.ylabel("latency at the each the moment[ms]", fontsize = 20)
+    #draw dashed line. (y[range], -x length, x length , style)
+    plt.hlines(latency, -100, 10000, linestyles="-", color ="red")
+    plt.title(CSVFileName[0] + " Latency and azmith", fontsize = 20 )
+    plt.grid(True)
+
 
 def plotDegGraph(point, name):
     print "///plotDegGraph///"

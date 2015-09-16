@@ -1,5 +1,6 @@
-__author__ = 'kento24n452'
 # -*- coding: utf-8 -*-
+__author__ = 'kento24n452'
+
 import numpy as np
 import pylab as plt
 import cv2
@@ -60,8 +61,8 @@ def detectValidImage(im_bi):
         if im_bi[0][i] == 255:
             counter += 1
         i += 1
-    if counter < 5 or 50 < counter :
-        print "invalid!"
+    if counter < 5 or 200 < counter :
+        print "invalid img!" , counter
         return -1
     else:
         return 1

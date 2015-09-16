@@ -1,5 +1,5 @@
-__author__ = 'kento24n452'
 # -*- coding: utf-8 -*-
+__author__ = 'kento24n452'
 import csv
 import codecs
 from numpy import *
@@ -8,7 +8,7 @@ import sys
 import os.path
 
 ######parameters########
-IMG_NUM = 2070
+IMG_NUM = 2069
 FLAME_MS = 5000.0/IMG_NUM
 #use it when read from csv data
 #DEG_PER_PIX = 48.4555/(656*0.9756097)
@@ -17,7 +17,7 @@ DEG_PER_PIX = 48.4555/656.0
 CENTER_DEG = 0
 
 #CSV file name, Graph title name, Expetiment name
-FILE_NAME = "OWDemoTW0Pred0"
+FILE_NAME = "RealVSReal"
 LIN_INT_FN = "CmpCSV/" + FILE_NAME + "LinearInt.csv"
 
 #Graph, CSV
@@ -25,7 +25,7 @@ FILE_PATH = "VRSJCsvData/"
 SAVE_FILE_PATH ="Graph/"
 
 #Image name without 4digi number
-IMG_FILE_NAME = "EX23TW00"
+IMG_FILE_NAME = "RealVSReal0"
 
 ###grobal variable###
 realDegArray = []
@@ -107,10 +107,10 @@ def readData():
     print "///read data from Module///"
     #captured image file name
     #/home/Data/
-    filePathVir = "../../../Data/cam/" + FILE_NAME + "V/"
-    filePathReal = "../../../Data/cam/" + FILE_NAME + "R/"
+    filePathVir = "../../../Data/cam/" + FILE_NAME + "/"
+    filePathReal = "../../../Data/cam/" + FILE_NAME + "/"
     print "/read RealCamData/"
-    fn = filePathReal + IMG_FILE_NAME
+    fn = filePathReal + "R" + IMG_FILE_NAME
     i = 0
     #create instance
     lineDetectClassR = main.lineDetect()
@@ -123,7 +123,7 @@ def readData():
     elif os.path.isfile(fn + str(IMG_NUM - 1) + ".png") == False:
         print fn + str(IMG_NUM - 1) + ".png"
         print "MAX image number error!"
-        exit(0)
+        #exit(0)
 
     while i < IMG_NUM:
         # dataArray[0]:edge[0], dA[1]:edge[1], dA[2]:width
@@ -140,7 +140,7 @@ def readData():
     global calcCenterDegFlag
     calcCenterDegFlag = False
     i = 0
-    fn = filePathVir + IMG_FILE_NAME
+    fn = filePathVir + "V" + IMG_FILE_NAME
 
     if os.path.isfile(fn + "0000.png") == False:
         print fn + "0000.png"
