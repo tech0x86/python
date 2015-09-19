@@ -65,9 +65,18 @@ def readCSVData(filename):
     print "///read LinInt CSV///"
     csvFile = codecs.open(filename, "rb","utf-8")
     reader = csv.reader(csvFile, CustomFormat())
+    tmp = []
+    counter = 0
+    delay = 0 #ms
     for row in reader:
         linearIntRealDegArray.append(float(row[0]))
-        linearIntVirDegArray.append(float(row[1]))
+        tmp.append(float(row[1]))
+        #linearIntVirDegArray.append(float(row[1]))
+        if counter > delay - 1:
+            linearIntVirDegArray.append(tmp.pop(0))
+        else:
+            linearIntVirDegArray.append(0.0)
+        counter +=1
     print "RealCam ElementNum = %d" %len(linearIntRealDegArray)
     print "VirCam ElementNum = %d" %len(linearIntVirDegArray)
     print "LinInt CSV read done"
@@ -106,16 +115,14 @@ def controlCalcVal():
     xMaxRmse = 40 + 1
     RMSEArray = []
     #setting Fontsize to all Graph
-    plt.rc('font', family='sans-serif')
-    plt.rc('font', serif='Helvetica Neue')
     plt.rcParams['font.size'] = 8
-    #plt.rcParams['font.family'] = "Helvetica"
+    plt.rcParams['font.family'] = "Helvetica"
     plt.rcParams['axes.linewidth'] = 0.5 #軸の太さを設定。目盛りは変わらない
 
     #indicater   0:not show, 1: show()
                         #0:Degree, 1:Diff, 2:Velocity, 3:Accel, 4:RMSE,
                         #5:no latency Diff and V, 6:Moment latency and V, 7:Moment latency and Deg(pixel
-                        #   8:moment latency + V, 9: no late Diff + Real
+                        #   8:moment latency + Real, 9: no late Diff + Real
     #pltGraphStateArray = [1, 0, 0, 0, 1,
      #                     1, 1, 0, 1, 1]
     pltGraphStateArray = [0, 0, 0, 0, 0,
@@ -224,9 +231,21 @@ def controlCalcVal():
         plt.show()
     plt.clf()
 
-    print calcRMSE2(calcLinearInt(), linearIntVirDegArray, 0, latency)
+    #expand time reso to 0.01ms in Real
+    linearInt2RealDegArray = calcLinearInt()
+    #expand time reso to 0.01ms in Virtual
+    discreteVirCamArray = [linearIntVirDegArray[0]]
+    j = 1
+    while j < len(linearIntVirDegArray):
+        k = 1
+        while k < 100:
+            discreteVirCamArray.append("NA")
+            k+=1
+        discreteVirCamArray.append(linearIntVirDegArray[j])
+        j+=1
+    print "discreteVirCamArray num", len(discreteVirCamArray)
 
-
+    #calcLatency2(linearInt2RealDegArray, discreteVirCamArray, latency)
 
 
 # calc RealCamDeg scale to fit virtual.
@@ -277,6 +296,27 @@ def calcLatency(base, comparison):
     print "latency:", latency, "ms"
     return latency
 
+#calc latency more resolution
+#ave latanecy >= 1
+def calcLatency2(base, comparison, aveLatency):
+    print "///calc latency///"
+    scanArea = 50
+    minusShift = (aveLatency * 100) - scanArea# x0.01ms
+    plusShift = (aveLatency * 100) + scanArea + 1
+    calcArray = []
+    #index start at 0, shift start at - 10ms. So, offset needed.
+    #Index of Min RMSE is latency
+    #example: 900 ~ 1100 lantency:10ms
+    for i in range(minusShift, plusShift):
+        print "RMSE step:", i,
+        rmse = calcRMSE2(base, comparison, i)
+        calcArray.append(rmse)
+    latency = calcArray.index(min(calcArray)) + minusShift
+    latency /= 100.0
+    print "Min RMSE:", min(calcArray), "deg"
+    print "latency:", latency, "ms"
+
+
 # calc RMSE
 def calcRMSE(realCamArray, virCamArray, shiftNum):
     i = 0
@@ -322,31 +362,19 @@ def calcRMSE(realCamArray, virCamArray, shiftNum):
     return rmse
 
 # calc RMSE
-def calcRMSE2(realCamArray, virCamArray, shiftNum, aveLatency):
+def calcRMSE2(realCamArray, virCamArray, shiftNum):
     i = 0
     sum = 0.0
     rmse = 0.0
-    step = 100
     scanNum = len(realCamArray)
     #shiftNum = aveLatency - 1
-    shiftNum = 2600
     #store val in discrete Array
     # Num:500k step 0.01ms
-    discreteVirCamArray = [virCamArray[0]]
-    j = 1
-    while j < len(virCamArray):
-        k = 1
-        while k < step:
-            discreteVirCamArray.append("NA")
-            k+=1
-        discreteVirCamArray.append(virCamArray[j])
-        j+=1
-    print "discreteVirCamArray num", len(discreteVirCamArray)
 
     if shiftNum == 0:
         while i < scanNum:
-            if discreteVirCamArray[i] != "NA":
-                diff = discreteVirCamArray[i] - realCamArray[i]
+            if virCamArray[i] != "NA":
+                diff = virCamArray[i] - realCamArray[i]
                 pow = math.pow(diff, 2)
                 sum += pow
             i += 1
@@ -356,8 +384,8 @@ def calcRMSE2(realCamArray, virCamArray, shiftNum, aveLatency):
     #shift virCam to future
     elif shiftNum > 0:
         while i < scanNum - shiftNum:
-             if discreteVirCamArray[i + shiftNum] != "NA":
-                diff = discreteVirCamArray[i + shiftNum] - realCamArray[i]
+             if virCamArray[i + shiftNum] != "NA":
+                diff = virCamArray[i + shiftNum] - realCamArray[i]
                 pow = math.pow(diff, 2)
                 sum += pow
              i += 1
@@ -368,8 +396,8 @@ def calcRMSE2(realCamArray, virCamArray, shiftNum, aveLatency):
     elif shiftNum < 0:
        shiftNum *= -1
        while i < scanNum - shiftNum:
-            if discreteVirCamArray[i] != "NA":
-                diff = discreteVirCamArray[i] - realCamArray[i + shiftNum]
+            if virCamArray[i] != "NA":
+                diff = virCamArray[i] - realCamArray[i + shiftNum]
                 pow = math.pow(diff, 2)
                 sum += pow
             i += 1
@@ -419,8 +447,8 @@ def calcLinearInt():
             #print "count: %d" % counter
             x += 1
         counter += 1
-    print "LinearInt Calc done. count = %d" % counter
-    print len(linearIntDegArray)
+    #print "LinearInt Calc done. count = %d" % counter
+    print "real Cam in 0.01ms", len(linearIntDegArray)
     #print linearIntDegArray
     return linearIntDegArray
 
@@ -605,6 +633,7 @@ def calcMomentLatencyAtDeg(momentLatency, plotIndicater, latency):
     degPerPixel = 0.073848247
     #turntable degree range +/-
     degBand = 20
+    sum =0.0
     #pixelBand = 271
     eleNum = (degBand * 2) + 1
     #[0]-[40] -20~0~20 len:41
@@ -618,6 +647,7 @@ def calcMomentLatencyAtDeg(momentLatency, plotIndicater, latency):
         deg = int(round(linearIntRealDegArray[i], 0))
         index = deg + degBand
         momentLatencyAtDeg[index].append(momentLatency[i])
+        sum += momentLatency[i]
         i += 1
 
     index = 0
@@ -628,16 +658,17 @@ def calcMomentLatencyAtDeg(momentLatency, plotIndicater, latency):
             momentLatencyAtDegSTDE[index] = std(momentLatencyAtDeg[index]) / sqrt(len(momentLatencyAtDeg[index]))
         index += 1
     x = linspace(-degBand/degPerPixel, degBand/degPerPixel, eleNum)
+    print "ave moment latency:", sum/i
 
 
     #print momentLatencyAtDegAve
     if plotIndicater:
+        writeData("LatencyAndDeg",x,momentLatencyAtDegAve, momentLatencyAtDegSTDE)
         plotMomentLatencyAndDegGraph(momentLatencyAtDegAve, momentLatencyAtDegSTDE, latency, degBand)
         plt.savefig(SaveGraphPath + CSVFileName[0] + "MomentLatencyAndPixel.eps")
         plt.savefig(SaveGraphPath + CSVFileName[0] + "MomentLatencyAndPixel.ps")
         plt.show()
         plt.clf()
-    writeData("LatencyAndDeg",x,momentLatencyAtDegAve, momentLatencyAtDegSTDE)
 
 #######Plot Graph##########
 
@@ -759,6 +790,7 @@ def plotMomentLatencyAndVelocity(momentLatency, velocity, latency):
     #ax1.set_ylabel('Latency at the each moment[ms]', fontsize = fs_label)
     ax1.set_xlim(0, 1000)
     ax1.set_ylim(-10, 10)
+    ax1.set_ylim(0, 35)
     #ax1.set_ylim(0, 35)
 
 
@@ -782,8 +814,8 @@ def plotMomentLatencyAndReal(momentLatency, real, latency):
     #ax1.set_xlabel('Time[ms]', fontsize = fs_label)
     #ax1.set_ylabel('Latency at the each moment[ms]', fontsize = fs_label)
     ax1.set_xlim(0, 1000)
-    #ax1.set_ylim(0, 35)
-    ax1.set_ylim(-10, 10)
+    ax1.set_ylim(0, 35)
+    #ax1.set_ylim(-10, 10)
     #plt.hlines(latency, -100, 10000, linestyles="-", color ="red",lw =0.5)
 
     #ax2.set_ylabel('Angular Velocity[deg/s]', fontsize = fs_label)

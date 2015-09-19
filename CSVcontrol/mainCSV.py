@@ -9,7 +9,8 @@ import os.path
 
 ######parameters########
 IMG_NUM = 2069
-FLAME_MS = 5000.0/IMG_NUM
+#FLAME_MS = 5000.0/IMG_NUM
+FLAME_MS = 2.41545
 #use it when read from csv data
 #DEG_PER_PIX = 48.4555/(656*0.9756097)
 DEG_PER_PIX = 48.4555/656.0
@@ -17,15 +18,15 @@ DEG_PER_PIX = 48.4555/656.0
 CENTER_DEG = 0
 
 #CSV file name, Graph title name, Expetiment name
-FILE_NAME = "RealVSReal"
-LIN_INT_FN = "CmpCSV/" + FILE_NAME + "LinearInt.csv"
+FOLDER_NAME = "SDKTW1Pred1Right"
+LIN_INT_FN = "CmpCSV/" + FOLDER_NAME + "linearInt.csv"
 
 #Graph, CSV
 FILE_PATH = "VRSJCsvData/"
 SAVE_FILE_PATH ="Graph/"
 
 #Image name without 4digi number
-IMG_FILE_NAME = "RealVSReal0"
+IMG_FILE_NAME = "SDKTW1Pred1Right"
 
 ###grobal variable###
 realDegArray = []
@@ -45,7 +46,7 @@ def readCSVData():
 
     print "///read data from CSV///"
     print "/read RealCamArray/"
-    filename = FILE_PATH + FILE_NAME + "R.csv"
+    filename = FILE_PATH + FOLDER_NAME + "R.csv"
     csvFile = codecs.open(filename, "rb","utf-8")
     try:
         len(csvFile)
@@ -66,7 +67,7 @@ def readCSVData():
     global calcCenterDegFlag
     calcCenterDegFlag = False
     print "/read VirtualCamArray/"
-    filename = FILE_PATH + FILE_NAME + "V.csv"
+    filename = FILE_PATH + FOLDER_NAME + "V.csv"
     csvFile = codecs.open(filename, "rb","utf-8")
     reader = csv.reader(csvFile,CustomFormat())
 
@@ -107,10 +108,10 @@ def readData():
     print "///read data from Module///"
     #captured image file name
     #/home/Data/
-    filePathVir = "../../../Data/cam/" + FILE_NAME + "/"
-    filePathReal = "../../../Data/cam/" + FILE_NAME + "/"
+    filePathVir = "../../../Data/cam/" + FOLDER_NAME + "/"
+    filePathReal = "../../../Data/cam/" + FOLDER_NAME + "/"
     print "/read RealCamData/"
-    fn = filePathReal + "R" + IMG_FILE_NAME
+    fn = filePathReal  + IMG_FILE_NAME + "R0"
     i = 0
     #create instance
     lineDetectClassR = main.lineDetect()
@@ -123,7 +124,7 @@ def readData():
     elif os.path.isfile(fn + str(IMG_NUM - 1) + ".png") == False:
         print fn + str(IMG_NUM - 1) + ".png"
         print "MAX image number error!"
-        #exit(0)
+        exit(0)
 
     while i < IMG_NUM:
         # dataArray[0]:edge[0], dA[1]:edge[1], dA[2]:width
@@ -140,7 +141,7 @@ def readData():
     global calcCenterDegFlag
     calcCenterDegFlag = False
     i = 0
-    fn = filePathVir + "V" + IMG_FILE_NAME
+    fn = filePathVir  + IMG_FILE_NAME + "V0"
 
     if os.path.isfile(fn + "0000.png") == False:
         print fn + "0000.png"
@@ -165,7 +166,7 @@ def writeData():
     print "///write CmpCSV data///"
     tempArray = []
     i = 0
-    fn = "CmpCSV/" + FILE_NAME + "LinearInt.csv"
+    fn = "CmpCSV/" + FOLDER_NAME + "LinearInt.csv"
     #get URI with optional setting
     csvFile = codecs.open(fn, "w", "utf-8")
     #disignate format
@@ -188,7 +189,8 @@ def writeData():
 def calcCenterDeg(leftEdge, rightEdge, width):
     if calcCenterDegFlag == False:
         #check whether valid data
-        if 10 < width and width < 40:
+        if 15 < width and width < 40:
+            print "find cente degree", leftEdge + width/2.0
             sum = float(leftEdge) + float(rightEdge)
             ave = sum / 2
             deg = ave * DEG_PER_PIX
@@ -288,6 +290,7 @@ def calcVirLinearInt(array):
             x += 1
             counter += 1
         counter += 1
+    print "NAPos" ,detectNAPos(array,0)
 
     print "VirLinearInt Calc done. count = %d" %counter
     print len(array)
@@ -343,10 +346,10 @@ def controlCalcVal():
     xMinRmse = -10
     xMaxRmse = 40 + 1
     print "///Calc Values///"
-    print "-----------%s----------" %FILE_NAME
+    print "-----------%s----------" %FOLDER_NAME
     diff = calcDiffOfDeg(linearIntRealDegArray, linearIntVirDegArray)
     plotDiffGraph(diff)
-    plt.savefig(FILE_PATH + SAVE_FILE_PATH + FILE_NAME + "Diff2.png")
+    plt.savefig(FILE_PATH + SAVE_FILE_PATH + FOLDER_NAME + "Diff2.png")
     #plt.show()
     plt.clf()
     AbsDiffSTD = std(calcABSDiffOfDeg(linearIntRealDegArray, linearIntVirDegArray))
@@ -367,7 +370,7 @@ def controlCalcVal():
     RMSEResultVal.append(min(RMSEArray))
     print "latency: %d ms" % latency
     plotRMSEGraph(RMSEArray, xMinRmse, xMaxRmse)
-    plt.savefig(FILE_PATH + SAVE_FILE_PATH + FILE_NAME + "RMSE2.png")
+    plt.savefig(FILE_PATH + SAVE_FILE_PATH + FOLDER_NAME + "RMSE2.png")
     plt.show()
     plt.clf()
 
@@ -443,72 +446,41 @@ def calcABSDiffOfDeg(realCamArray, virCamArray):
 
 #######Plot Graph##########
 
-def plotGraph(point, name):
-    print "///plotGraph///"
-    #setting Fontsize to all Graph
-    plt.rcParams['font.size'] = 17
-    #linspace(開始値，終了値，分割数)”で，線形数列を作成。
-    x = linspace(0, len(point), len(point))
-    plt.plot(x, point, label = name)
-    plt.legend(loc = 'upper right') # show data label
-    plt.xlabel("Time[ms]", fontsize = 20)
-    plt.ylabel("Azmith[deg]", fontsize = 20)
+def plotTwoElementGraph(point1, name1, point2, name2, title, ylim):
+    print "///plot Two Graph///"
+    #plt.figure(figsize = (figSize[0]/2.54, figSize[1]/2.54))#inch
+    x1 = linspace(0, len(point1), len(point1))
+    plt.plot(x1, point1, label = name1)
+    x2 = linspace(0, len(point2), len(point2))
+    plt.plot(x2, point2, label = name2, linestyle="--")
+
+    #plt.legend(loc = 'upper right') # show data label
+    #plt.xlabel("Time[ms]")
+    #plt.ylabel("Azmith[deg]")
     #draw dashed line. (y[range], -x length, x length , style)
-    plt.hlines(0, -100, 10000, linestyles="-")
-    plt.ylim(-20,20)
-    plt.xlim(0,5000)
-    #plt.title(FILE_NAME + " Real and Virtual Azmith", fontsize = 20 )
-
-def plotDiffGraph(point):
-    print "///plotDiffGraph///"
-
-    #linspace(開始値，終了値，分割数)”で，線形数列を作成。
-    x = linspace(0, len(point), len(point))
-    plt.plot(x, point, label = "Difference", linewidth=2)
-    plt.legend(loc = 'upper right') # show data label
-    plt.xlabel("Time[ms]", fontsize = 18)
-    plt.ylabel("Azmith[deg]", fontsize = 18)
-    plt.hlines(0, -100, 10000, linestyles="-")
-    plt.ylim(-5,5)
-    plt.xlim(0,5000)
-    plt.title(FILE_NAME + " Difference Azmith", fontsize = 20 )
-
-
-def plotRMSEGraph(point, xmin, xmax):
-    print "///plotRMSEGraph///"
-
-    #linspace(開始値，終了値，分割数)”で，線形数列を作成。
-    x = linspace(xmin, xmax - 1, len(point))
-    plt.plot(x, point, label = "RMSE", linewidth=2)
-    plt.legend(loc = 'upper right') # show data label
-    plt.xlabel("Shift Time[ms]", fontsize = 20)
-    plt.ylabel("RMSE[deg]", fontsize = 20)
-    plt.vlines(0, -10, 50, linestyles="-")
-    plt.vlines(RMSEResultVal[0], -10, 2, linestyles="-", colors="red", linewidth=2)
-    annotateData = str(round(RMSEResultVal[1],2)) + "deg, " + str(RMSEResultVal[0]) + "ms"
-    plt.annotate(annotateData,
-            xy=(RMSEResultVal[0], 2), xycoords='data',
-            xytext=(+10, +30), textcoords='offset points', fontsize=17,
-            arrowprops=dict(arrowstyle="->", connectionstyle="arc3,rad=.2"))
-
-    plt.ylim(0,5)
-    #plt.title(FILE_NAME + "Shift Time and RMSE", fontsize = 20 )
-
+    plt.hlines(0, -100, 10000, linestyles = "-", lw = 0.5)
+    plt.ylim(-ylim, ylim)
+    plt.xlim(0, 2000)
+    plt.grid(True)
+    #plt.title(CSVFileName[0] + title, fontsize = 20 )
 
 if __name__ == "__main__":
     print "///mainFunc///"
     if checkExistLinIntCSV() == 0:
         readData()
         calcVirLinearInt(virDegArray)
+        calcVirLinearInt(realDegArray)
         calcLinearInt(linearIntRealDegArray, realDegArray)
         calcLinearInt(linearIntVirDegArray, virDegArray)
         writeData()
     else:
         readLinearIntCSVData()
+    plotTwoElementGraph(linearIntRealDegArray, "Real", linearIntVirDegArray, "Virtual", "", 20)
+    plt.show()
     '''#
     plotGraph(linearIntRealDegArray, "Real")
     plotGraph(linearIntVirDegArray, "Virtual")
-    plt.savefig(FILE_PATH + SAVE_FILE_PATH + FILE_NAME + "RealAndVirtual2.png")
+    plt.savefig(FILE_PATH + SAVE_FILE_PATH + FOLDER_NAME + "RealAndVirtual2.png")
     plt.show()
     plt.clf() #delete graph
     controlCalcVal()

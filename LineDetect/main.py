@@ -70,7 +70,7 @@ def detectValidImage(im_bi):
 # detect Edge Xpos from Edge image
 def scanEdgePos(im):
     #print "///scan Edge Pos///"
-    firstExistAreaSens = 50
+    firstExistAreaSens = 100
     existAreaSens = 100
     edgePos = []
     centerXPos = int(len(im[0])/2)
