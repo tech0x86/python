@@ -245,7 +245,7 @@ def controlCalcVal():
         j+=1
     print "discreteVirCamArray num", len(discreteVirCamArray)
 
-    #calcLatency2(linearInt2RealDegArray, discreteVirCamArray, latency)
+    calcLatency2(linearInt2RealDegArray, discreteVirCamArray, latency)
 
 
 # calc RealCamDeg scale to fit virtual.
@@ -335,7 +335,7 @@ def calcRMSE(realCamArray, virCamArray, shiftNum):
             pow = math.pow(diff, 2)
             sum += pow
             i += 1
-        ave = sum/scanNum
+        ave = sum/i
         rmse = math.sqrt(ave)
 
     #shift virCam to future
@@ -345,7 +345,7 @@ def calcRMSE(realCamArray, virCamArray, shiftNum):
              pow = math.pow(diff, 2)
              sum += pow
              i += 1
-        ave = sum/scanNum
+        ave = sum/i
         rmse = math.sqrt(ave)
 
     #shift realCam to future
@@ -356,7 +356,7 @@ def calcRMSE(realCamArray, virCamArray, shiftNum):
             pow = math.pow(diff, 2)
             sum += pow
             i += 1
-       ave = sum/scanNum
+       ave = sum/i
        rmse = math.sqrt(ave)
 
     return rmse
@@ -366,6 +366,7 @@ def calcRMSE2(realCamArray, virCamArray, shiftNum):
     i = 0
     sum = 0.0
     rmse = 0.0
+    counter = 0
     scanNum = len(realCamArray)
     #shiftNum = aveLatency - 1
     #store val in discrete Array
@@ -377,8 +378,9 @@ def calcRMSE2(realCamArray, virCamArray, shiftNum):
                 diff = virCamArray[i] - realCamArray[i]
                 pow = math.pow(diff, 2)
                 sum += pow
+                counter +=1
             i += 1
-        ave = sum/len(virCamArray)
+        ave = sum/counter
         rmse = math.sqrt(ave)
 
     #shift virCam to future
@@ -388,8 +390,9 @@ def calcRMSE2(realCamArray, virCamArray, shiftNum):
                 diff = virCamArray[i + shiftNum] - realCamArray[i]
                 pow = math.pow(diff, 2)
                 sum += pow
+                counter +=1
              i += 1
-        ave = sum/len(virCamArray)
+        ave = sum/counter
         rmse = math.sqrt(ave)
 
     #shift realCam to future
@@ -400,8 +403,9 @@ def calcRMSE2(realCamArray, virCamArray, shiftNum):
                 diff = virCamArray[i] - realCamArray[i + shiftNum]
                 pow = math.pow(diff, 2)
                 sum += pow
+                counter += 1
             i += 1
-       ave = sum/len(virCamArray)
+       ave = sum/counter
        rmse = math.sqrt(ave)
 
     return rmse

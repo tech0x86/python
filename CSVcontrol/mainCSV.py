@@ -389,7 +389,7 @@ def calcRMSE(realCamArray, virCamArray, shiftNum):
             pow = math.pow(diff, 2)
             sum += pow
             i += 1
-        ave = sum/len(realCamArray)
+        ave = sum/i
         rmse = math.sqrt(ave)
 
     #shift virCam to future
@@ -399,7 +399,7 @@ def calcRMSE(realCamArray, virCamArray, shiftNum):
              pow = math.pow(diff, 2)
              sum += pow
              i += 1
-        ave = sum/len(realCamArray)
+        ave = sum/i
         rmse = math.sqrt(ave)
 
     #shift realCam to future
@@ -410,7 +410,7 @@ def calcRMSE(realCamArray, virCamArray, shiftNum):
             pow = math.pow(diff, 2)
             sum += pow
             i += 1
-       ave = sum/len(realCamArray)
+       ave = sum/i
        rmse = math.sqrt(ave)
 
     return rmse
