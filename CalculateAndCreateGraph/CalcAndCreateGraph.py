@@ -116,17 +116,17 @@ def controlCalcVal():
     RMSEArray = []
     #setting Fontsize to all Graph
     plt.rcParams['font.size'] = 8
-    plt.rcParams['font.family'] = "Helvetica"
+    #plt.rcParams['font.family'] = "Helvetica"
     plt.rcParams['axes.linewidth'] = 0.5 #軸の太さを設定。目盛りは変わらない
 
     #indicater   0:not show, 1: show()
                         #0:Degree, 1:Diff, 2:Velocity, 3:Accel, 4:RMSE,
-                        #5:no latency Diff and V, 6:Moment latency and V, 7:Moment latency and Deg(pixel
-                        #   8:moment latency + Real, 9: no late Diff + Real
+                        #5:Remaining Diff and V, 6:Moment latency and V, 7:Instantaneous latency and Deg(pixel
+                        #8:Instantaneous latency + Real, 9:Remaining Diff + Real
     #pltGraphStateArray = [1, 0, 0, 0, 1,
      #                     1, 1, 0, 1, 1]
     pltGraphStateArray = [0, 0, 0, 0, 0,
-                          0, 0, 0, 0, 0]
+                          0, 0, 1, 0, 0]
 
     saveGraphPathAndName = SaveGraphPath + CSVFileName[0]
     noLatencyVirCam = []
@@ -145,7 +145,6 @@ def controlCalcVal():
         plotTwoElementGraph(linearIntRealDegArray, "Real", linearIntVirDegArray, "Virtual", "", 20)
         #emf, eps, jpeg, jpg, pdf, png, ps, raw, rgba, svg, svgz, tif, tiff
         plt.savefig(saveGraphPathAndName + "Deg.eps")
-        plt.savefig(saveGraphPathAndName + "Deg.ps")
         plt.show()
     plt.clf()
     #### Difference ####
@@ -182,11 +181,10 @@ def controlCalcVal():
     if pltGraphStateArray[4]:
         plotRMSEGraph(RMSEArray, xMinRmse, xMaxRmse)
         plt.savefig(saveGraphPathAndName + "RMSE.eps")
-        plt.savefig(saveGraphPathAndName + "RMSE.ps")
         plt.show()
     plt.clf()
 
-    #create no late VirCam Azmith
+    #create no late VirCam Azimuth
     j = 0
     while j < len(linearIntVirDegArray) - latency:
         noLatencyVirCam.append(linearIntVirDegArray[latency + j])
@@ -197,7 +195,6 @@ def controlCalcVal():
     if pltGraphStateArray[5]:
         plotNoLateDiffAndVelocityGraph(NoLateDiff, speedArray)
         plt.savefig(saveGraphPathAndName + "NoLateDiff+V.eps")
-        plt.savefig(saveGraphPathAndName + "NoLateDiff+V.ps")
         plt.show()
     plt.clf()
 
@@ -206,7 +203,6 @@ def controlCalcVal():
     if pltGraphStateArray[6]:
         plotMomentLatencyAndVelocity(momentLatency, speedArray, latency)
         plt.savefig(saveGraphPathAndName + "MomentLatency+V.eps")
-        plt.savefig(saveGraphPathAndName + "MomentLatency+V.ps")
         plt.show()
     plt.clf()
 
@@ -220,14 +216,12 @@ def controlCalcVal():
     if pltGraphStateArray[8]:
         plotMomentLatencyAndReal(momentLatency, linearIntRealDegArray, latency)
         plt.savefig(saveGraphPathAndName + "MomentLatency+Real.eps")
-        plt.savefig(saveGraphPathAndName + "MomentLatency+Real.ps")
         plt.show()
     plt.clf()
 
     if pltGraphStateArray[9]:
         plotNoLateDiffAndRealGraph(NoLateDiff, linearIntRealDegArray)
         plt.savefig(saveGraphPathAndName + "NoLateDiff+Real.eps")
-        plt.savefig(saveGraphPathAndName + "NoLateDiff+Real.ps")
         plt.show()
     plt.clf()
 
@@ -245,7 +239,7 @@ def controlCalcVal():
         j+=1
     print "discreteVirCamArray num", len(discreteVirCamArray)
 
-    calcLatency2(linearInt2RealDegArray, discreteVirCamArray, latency)
+    #calcLatency2(linearInt2RealDegArray, discreteVirCamArray, latency)
 
 
 # calc RealCamDeg scale to fit virtual.
@@ -491,7 +485,7 @@ def calcABSDiffOfDeg(realCamArray, virCamArray):
     print "Ave ABS Diff:%1.4f" %AbsDiff
     return AbsDiffArray
 
-#calc velocity from real cam azmith
+#calc velocity from real cam Azimuth
 def calcVelocityFromRealCam():
     i = 1
     speedArray.append(0.0)
@@ -545,8 +539,8 @@ def calcSmoothing(array, interval):
 
 
 
-# base data is real cam azmith. First, set delay time(around dozens millisecond).
-# And using this delay time, delay real cam data as virtual azmith
+# base data is real cam Azimuth. First, set delay time(around dozens millisecond).
+# And using this delay time, delay real cam data as virtual Azimuth
 # Now, you implicate "my prediction".
 # prediction time length means "update" prediction time.
 # (ex 13.3ms prediction time is predict head pose in 13.3ms future.
@@ -624,7 +618,8 @@ def calcMomentLatency():
 
         #deal with error latency
         tmpLatency.append(latency)
-        if latency > median(tmpLatency) + 5 or latency < median(tmpLatency) - 5:
+        threthould = 5
+        if latency > median(tmpLatency) + threthould or latency < median(tmpLatency) - threthould:
             if len(latencyArray) > 1:
                 latency = latencyArray[i - 1]
         if len(tmpLatency) > 50:
@@ -686,7 +681,7 @@ def plotTwoElementGraph(point1, name1, point2, name2, title, ylim):
 
     #plt.legend(loc = 'upper right') # show data label
     #plt.xlabel("Time[ms]")
-    #plt.ylabel("Azmith[deg]")
+    #plt.ylabel("Azimuth[deg]")
     #draw dashed line. (y[range], -x length, x length , style)
     plt.hlines(0, -100, 10000, linestyles = "-", lw = 0.5)
     plt.ylim(-ylim, ylim)
@@ -702,12 +697,12 @@ def plotDiffGraph(point):
     plt.plot(point, label = "Difference", linewidth=1)
     plt.legend(loc = 'upper right') # show data label
     plt.xlabel("Time[ms]", fontsize = 18)
-    plt.ylabel("Difference of Azmith[deg]", fontsize = 18)
+    plt.ylabel("Difference of Azimuth[deg]", fontsize = 18)
     plt.hlines(0, -100, 10000, linestyles="-")
     #plt.ylim(-1, 1)
     #plt.xlim(0, 1000)
     plt.grid(True)
-    #plt.title(CSVFileName[0] + " Difference Azmith", fontsize = 20 )
+    #plt.title(CSVFileName[0] + " Difference Azimuth", fontsize = 20 )
 
 #(b)
 def plotRMSEGraph(point, xmin, xmax):
@@ -716,17 +711,22 @@ def plotRMSEGraph(point, xmin, xmax):
     minRMSE = min(point)
     latency = point.index(min(point)) + xmin
     x = linspace(xmin, xmax - 1, len(point))
-    plt.plot(x, point, label = "RMSE")
+    plt.plot(x, point, label = "RMSE",linestyle = ":", color = "m")
     #plt.legend(loc = 'upper right') # show data label
     #plt.xlabel("Shift Time[ms]")
     #plt.ylabel("RMSE[deg]:Real and Virtual")
     plt.vlines(0, -10, 50, linestyles="-", lw = 0.5)
     plt.vlines(latency, -10, 2, linestyles="--", colors="red", linewidth=0.5)
+    #
+    '''
     annotateData = str(round(minRMSE, 2)) + "deg, " + str(latency) + "ms"
+
     plt.annotate(annotateData,
             xy=(latency, 2), xycoords='data',
             xytext=(0, +30), textcoords='offset points', fontsize=8,
             arrowprops=dict(arrowstyle="->", connectionstyle="arc3,rad=.2"))
+    '''
+    #
     plt.ylim(0,5)
     plt.grid(True)
     #plt.title(CSVFileName[0] + "Shift Time and RMSE", fontsize = 20 )
@@ -744,7 +744,7 @@ def plotNoLateDiffAndVelocityGraph(point1,point2):
     ax2.plot(point2, 'b', linestyle="--")
     fs_label = 8
     #ax1.set_xlabel('Time[ms]', fontsize = fs_label)
-    #ax1.set_ylabel('Difference of Azmith[deg]', fontsize = fs_label)
+    #ax1.set_ylabel('Difference of Azimuth[deg]', fontsize = fs_label)
     ax1.set_xlim(0, 1000)
     #invert range to (min,max)
     ax1.set_ylim(-1, 1)
@@ -766,7 +766,7 @@ def plotNoLateDiffAndRealGraph(diff, real):
     ax2.plot(real, 'b',)
     fs_label = 8
     #ax1.set_xlabel('Time[ms]', fontsize = fs_label)
-    #ax1.set_ylabel('Difference of Azmith[deg]', fontsize = fs_label)
+    #ax1.set_ylabel('Difference of Azimuth[deg]', fontsize = fs_label)
     ax1.set_xlim(0, 1000)
     #invert range to (min,max)
     ax1.set_ylim(-1, 1)
@@ -794,8 +794,7 @@ def plotMomentLatencyAndVelocity(momentLatency, velocity, latency):
     #ax1.set_ylabel('Latency at the each moment[ms]', fontsize = fs_label)
     ax1.set_xlim(0, 1000)
     ax1.set_ylim(-10, 10)
-    ax1.set_ylim(0, 35)
-    #ax1.set_ylim(0, 35)
+#    ax1.set_ylim(0, 35)
 
 
     #ax2.set_ylabel('Angular Velocity[deg/s]', fontsize = fs_label)
@@ -812,13 +811,13 @@ def plotMomentLatencyAndReal(momentLatency, real, latency):
     ax1 = fig.add_subplot(111)
     ax2 = ax1.twinx()
 
-    ax1.plot(momentLatency, "g",)
+    ax1.plot(momentLatency, "r")
     ax2.plot(real, 'b')
     fs_label = 8
     #ax1.set_xlabel('Time[ms]', fontsize = fs_label)
     #ax1.set_ylabel('Latency at the each moment[ms]', fontsize = fs_label)
     ax1.set_xlim(0, 1000)
-    ax1.set_ylim(0, 35)
+    ax1.set_ylim(-10, 35)
     #ax1.set_ylim(-10, 10)
     #plt.hlines(latency, -100, 10000, linestyles="-", color ="red",lw =0.5)
 
@@ -831,7 +830,7 @@ def plotMomentLatencyAndReal(momentLatency, real, latency):
 
 
 
-#moment latency is y axis, azmith is x axis
+#moment latency is y axis, Azimuth is x axis
 def plotMomentLatencyAndDegGraph(aveLatency, stdeLatency, latency, band):
     print "///plotMomentLatencyAndDegGraph///"
     degPerPixel = 0.073848247
@@ -850,11 +849,11 @@ def plotMomentLatencyAndDegGraph(aveLatency, stdeLatency, latency, band):
 
 
     #plt.legend(loc = 'upper right') # show data label
-    #plt.xlabel("Azmith[deg]", fontsize = 20)
+    #plt.xlabel("Azimuth[deg]", fontsize = 20)
     #plt.ylabel("latency at the each the moment[ms]", fontsize = 20)
     #draw dashed line. (y[range], -x length, x length , style)
     plt.hlines(latency, -10000, 10000, linestyles="-", color ="red",lw =0.5)
-    #plt.title(CSVFileName[0] + " Latency and azmith", fontsize = 20 )
+    #plt.title(CSVFileName[0] + " Latency and Azimuth", fontsize = 20 )
     plt.grid(True)
 
 
