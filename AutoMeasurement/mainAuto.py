@@ -85,16 +85,16 @@ class ChangeHandler(FileSystemEventHandler):
             print('%s has been deleted.' % event.src_path)
 
 def handleEvent():
-        event_handler = ChangeHandler()
-        observer = Observer()
-        observer.schedule(event_handler, BASEDIR, recursive=True)
-        observer.start()
-        try:
-            while True:
-                time.sleep(1)
-        except KeyboardInterrupt:
-            observer.stop()
-        observer.join()
+    event_handler = ChangeHandler()
+    observer = Observer()
+    observer.schedule(event_handler, BASEDIR, recursive=True)
+    observer.start()
+    try:
+        while True:
+            time.sleep(1)
+    except KeyboardInterrupt:
+        observer.stop()
+    observer.join()
 
 
 #check if exist CSV file
@@ -485,9 +485,99 @@ def calcLinearInt(linearIntDegArray, camDegArray):
     print len(linearIntDegArray)
     #print linearIntDegArray
 
+# calc Liner Interpolation,
+# and store it to linerInt array in **0.01ms** order
+def calcLinearInt2():
+    print "///calc LinearInt///"
+    linearIntDegArray = []
+    framePerMS = 100
+    counter = 1
+    y1My0 = 0.0
+    # Set same value until first CamFlame
+    # Fill head-array with data between 0ms to Nms until valid data
+    # math.floor : remove Fig below 1st decimal place
+
+    whileCounter = 0
+    linearIntDegArray.append(0.0)
+    #0-1.00 step 0.01
+    while whileCounter < framePerMS:
+        linearIntDegArray.append(linearIntRealDegArray[0])
+        whileCounter += 1
+        #print "ms: %d" % whileCounter
+
+    #main loop. calc while elementNum
+    while counter < len(linearIntRealDegArray) -1 :
+        x0 = framePerMS * (counter + 1)
+        x = x0 + 1
+
+        #sub loop. loop while  x < (omited x1)
+        while x <= framePerMS * (counter + 2) :
+            #y1 - y0
+            y1My0 = linearIntRealDegArray[int(counter + 1)] - linearIntRealDegArray[int(counter)]
+            #calc Liner Interpolation
+            linerInt = linearIntRealDegArray[int(counter)]
+            # x1 - x0
+            x1Mx0 = framePerMS
+            linerInt += (x - x0) * y1My0 / x1Mx0
+            linearIntDegArray.append(linerInt)
+            #print "ms: %d" % x  ,
+            #print linerInt ,
+            #print "count: %d" % counter
+            x += 1
+        counter += 1
+    #print "LinearInt Calc done. count = %d" % counter
+    print "real Cam in [0.01]ms:", len(linearIntDegArray)
+    #print linearIntDegArray
+    return linearIntDegArray
+
 #########END Calc Linear Interpolation############
 
 
+# calc RMSE
+def calcRMSE(realCamArray, virCamArray, shiftNum):
+    i = 0
+    sum = 0.0
+    rmse = 0.0
+
+    if len(realCamArray) > len(virCamArray):
+        scanNum = len(virCamArray)
+    else:
+        scanNum = len(realCamArray)
+
+
+    if shiftNum == 0:
+        while i < scanNum:
+            diff = virCamArray[i] - realCamArray[i]
+            pow = math.pow(diff, 2)
+            sum += pow
+            i += 1
+        ave = sum/i
+        rmse = math.sqrt(ave)
+
+    #shift virCam to future
+    elif shiftNum > 0:
+        while i < scanNum - shiftNum:
+             diff = virCamArray[i + shiftNum] - realCamArray[i]
+             pow = math.pow(diff, 2)
+             sum += pow
+             i += 1
+        ave = sum/i
+        rmse = math.sqrt(ave)
+
+    #shift realCam to future
+    elif shiftNum < 0:
+       shiftNum *= -1
+       while i < scanNum - shiftNum:
+            diff = virCamArray[i] - realCamArray[i + shiftNum]
+            pow = math.pow(diff, 2)
+            sum += pow
+            i += 1
+       ave = sum/i
+       rmse = math.sqrt(ave)
+
+    return rmse
+
+#graph fot verification
 def plotTwoElementGraph(point1, name1, point2, name2):
     print "///plot Two Graph///"
     ylim = 20
@@ -507,6 +597,161 @@ def plotTwoElementGraph(point1, name1, point2, name2):
     plt.grid(True)
     #plt.title(CSVFileName[0] + title, fontsize = 20 )
 
+#calc latency and each RMSE when shifted.
+def calcLatency(base, comparison):
+    print "///calc latency///"
+    minusShift = 10
+    plusShift = 100 + 1
+    calcArray = []
+    #index start at 0, shift start at - 10ms. So, offset needed.
+    #Index of Min RMSE is latency
+    for i in range(-minusShift, plusShift):
+        rmse = calcRMSE(base, comparison, i)
+        calcArray.append(rmse)
+    latency = calcArray.index(min(calcArray)) - minusShift
+    print "Min RMSE:", min(calcArray), "deg"
+    print "latency:", latency, "ms"
+    return latency
+
+
+# calc RealCamDeg scale to fit virtual.
+# present scale is real > virtual.
+def calcRealCamScale():
+    print "///calc real Cam scale///"
+    scaleBandStep = 0.001
+    scale = 1.00
+    i = 1
+    scaledRealCamDeg = []
+    latency = calcLatency(linearIntRealDegArray, linearIntVirDegArray)
+    minRMSE = calcRMSE(linearIntRealDegArray, linearIntVirDegArray, latency)
+    while i < 500:
+        tmpScaledRealCamDeg = scaledRealCamDeg
+        if i==1:
+            tmpScaledRealCamDeg = linearIntRealDegArray
+        scaledRealCamDeg = []
+        j = 0
+        while j < len(linearIntRealDegArray):
+            ratio = scale - (scaleBandStep * i)
+            scaledVal = linearIntRealDegArray[j] * ratio
+            scaledRealCamDeg.append(scaledVal)
+            j += 1
+        tmpRMSE = calcRMSE(scaledRealCamDeg, linearIntVirDegArray, latency)
+        if tmpRMSE < minRMSE:
+            minRMSE = tmpRMSE
+        else:
+            print "find scale:", ratio + scaleBandStep, " minRMSE:", minRMSE
+            global linearIntRealDegArray
+            linearIntRealDegArray = tmpScaledRealCamDeg
+            break
+        i += 1
+    return tmpScaledRealCamDeg
+
+# calc RMSE in 0.01 ms
+def calcRMSE2(realCamArray, virCamArray, shiftNum):
+    i = 0
+    sum = 0.0
+    rmse = 0.0
+    counter = 0
+    scanNum = len(realCamArray)
+    #shiftNum = aveLatency - 1
+    #store val in discrete Array
+    # Num:500k step 0.01ms
+
+    if shiftNum == 0:
+        while i < scanNum:
+            if virCamArray[i] != "NA":
+                diff = virCamArray[i] - realCamArray[i]
+                pow = math.pow(diff, 2)
+                sum += pow
+                counter +=1
+            i += 1
+        ave = sum/counter
+        rmse = math.sqrt(ave)
+
+    #shift virCam to future
+    elif shiftNum > 0:
+        while i < scanNum - shiftNum:
+             if virCamArray[i + shiftNum] != "NA":
+                diff = virCamArray[i + shiftNum] - realCamArray[i]
+                pow = math.pow(diff, 2)
+                sum += pow
+                counter +=1
+             i += 1
+        ave = sum/counter
+        rmse = math.sqrt(ave)
+
+    #shift realCam to future
+    elif shiftNum < 0:
+       shiftNum *= -1
+       while i < scanNum - shiftNum:
+            if virCamArray[i] != "NA":
+                diff = virCamArray[i] - realCamArray[i + shiftNum]
+                pow = math.pow(diff, 2)
+                sum += pow
+                counter += 1
+            i += 1
+       ave = sum/counter
+       rmse = math.sqrt(ave)
+
+    return rmse
+
+
+#calc latency more resolution
+#ave latanecy >= 1
+def calcLatency2(base, comparison, aveLatency):
+    print "///calc latency///"
+    scanArea = 50
+    minusShift = (aveLatency * 100) - scanArea# x0.01ms
+    plusShift = (aveLatency * 100) + scanArea + 1
+    calcArray = []
+    #index start at 0, shift start at - 10ms. So, offset needed.
+    #Index of Min RMSE is latency
+    #example: 900 ~ 1100 lantency:10ms
+    for i in range(minusShift, plusShift):
+        print "RMSE step:", i,
+        rmse = calcRMSE2(base, comparison, i)
+        calcArray.append(rmse)
+    latency = calcArray.index(min(calcArray)) + minusShift
+    latency /= 100.0
+    print ""
+    print "Min RMSE:", min(calcArray), "deg"
+    print "latency:", latency, "ms"
+
+
+def controlCalcVal():
+    #### RMSE ####
+    xMinRmse = -10
+    xMaxRmse = 40 + 1
+    RMSEArray = []
+
+    calcRealCamScale()
+
+    print "Modified RMSE: %f" %calcRMSE(linearIntRealDegArray, linearIntVirDegArray, 0)
+    for i in range(xMinRmse, xMaxRmse):
+        rmse = calcRMSE(linearIntRealDegArray, linearIntVirDegArray, i)
+        RMSEArray.append(rmse)
+    print "Min RMSE :%f" % min(RMSEArray)
+    latency = RMSEArray.index(min(RMSEArray)) + xMinRmse
+    print "latency: %d ms" % latency
+
+    #expand time reso to 0.01ms in Real
+    linearInt2RealDegArray = calcLinearInt2()
+    #expand time reso to 0.01ms in Virtual
+    discreteVirCamArray = [linearIntVirDegArray[0]]
+
+    j = 1
+    while j < len(linearIntVirDegArray):
+        k = 1
+        while k < 100:
+            discreteVirCamArray.append("NA")
+            k+=1
+        discreteVirCamArray.append(linearIntVirDegArray[j])
+        j+=1
+    print "discreteVirCamArray num", len(discreteVirCamArray)
+
+    calcLatency2(linearInt2RealDegArray, discreteVirCamArray, latency)
+
+
 
 if __name__ == "__main__":
     print "///mainFunc///"
@@ -521,5 +766,6 @@ if __name__ == "__main__":
         writeData()
     #   plotTwoElementGraph(linearIntRealDegArray, "Real",linearIntVirDegArray, "Virtual")
     #   plt.show()
+    controlCalcVal()
 
 

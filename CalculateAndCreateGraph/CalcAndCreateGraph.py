@@ -160,7 +160,7 @@ def controlCalcVal():
     AbsDiffSTDE = AbsDiffSTD/sqrt(len(linearIntRealDegArray))
     #standard error
     print "AbsDiffSTDE: %f" %AbsDiffSTDE
-    #### RMSE ####
+
 
     if pltGraphStateArray[2]:
         plotVelocityGraph(speedArray)
@@ -171,6 +171,7 @@ def controlCalcVal():
         plotAccelGraph(accelerationArray)
         plt.show()
     plt.clf()
+    #### RMSE ####
     print "RMSE: %f" %calcRMSE(linearIntRealDegArray, linearIntVirDegArray, 0)
     for i in range(xMinRmse, xMaxRmse):
         rmse = calcRMSE(linearIntRealDegArray, linearIntVirDegArray, i)
@@ -229,6 +230,7 @@ def controlCalcVal():
     linearInt2RealDegArray = calcLinearInt()
     #expand time reso to 0.01ms in Virtual
     discreteVirCamArray = [linearIntVirDegArray[0]]
+
     j = 1
     while j < len(linearIntVirDegArray):
         k = 1
@@ -239,7 +241,7 @@ def controlCalcVal():
         j+=1
     print "discreteVirCamArray num", len(discreteVirCamArray)
 
-    #calcLatency2(linearInt2RealDegArray, discreteVirCamArray, latency)
+    calcLatency2(linearInt2RealDegArray, discreteVirCamArray, latency)
 
 
 # calc RealCamDeg scale to fit virtual.
@@ -355,7 +357,7 @@ def calcRMSE(realCamArray, virCamArray, shiftNum):
 
     return rmse
 
-# calc RMSE
+# calc RMSE in 0.01 ms
 def calcRMSE2(realCamArray, virCamArray, shiftNum):
     i = 0
     sum = 0.0
