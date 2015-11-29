@@ -20,17 +20,19 @@ from watchdog.events import FileSystemEventHandler
 from watchdog.observers import Observer
 
 
+########Constance#########
 #FLAME_MS = 5000.0/IMG_NUM
 FLAME_MS = 2.41545
 #use it when read from csv data
 #DEG_PER_PIX = 48.4555/(656*0.9756097)
 #0.07386509146341
 DEG_PER_PIX = 48.4555/656.0
-CENTER_DEG = 0
 
 ###grobal variable###
 # indicate index pos area in img
+CENTER_DEG = 0
 EXIST_AREA = [0, 1000]
+#must be initialized before use #
 FIRST_DETECT_EDGE_FLAG = False
 calcCenterDegFlag = False
 realDegArray = []
@@ -40,13 +42,21 @@ linearIntVirDegArray = []
 
 
 #####File NAME######
+"""#
+cam
+-Experiment name
+--"[Experiment name][R][00000].png"
+--"[Experiment name][V][00000].png"
+Experiment name: [Render][TW][0 or 1][Pred][0 or 1][L or R]
+"""#
 # base directory(same to autoMain.py directory
 BASEDIR = os.path.abspath(os.path.dirname(__file__))
 imageFolder = "/Users/kento24n452/Data/testData/SDKTW0Pred0/"
+#experiment name
 commonImageFilename = "SDKTW0Pred0"
 fnR = imageFolder + commonImageFilename + "R"
 fnV = imageFolder + commonImageFilename + "V"
-CSVFileName = "CSV/" + commonImageFilename + ".csv"
+CSVFileName = "CSV/" + commonImageFilename + "No"
 
 
 def getext(filename):
@@ -98,9 +108,13 @@ def handleEvent():
 
 
 #check if exist CSV file
-def checkExistCSV():
-    if os.path.isfile(CSVFileName) == True:
-        print "Exist CSV file! ",CSVFileName
+def checkExistCSV(count):
+    fn = CSVFileName + str(count)+ ".csv"
+    if os.path.exists("CSV") == False:
+        print "make directory"
+        os.mkdir("CSV")
+    if os.path.isfile(fn) == True:
+        print "Exist CSV file! ", fn
         return 1
     else:
         return 0
@@ -277,62 +291,132 @@ def calcCamDeg(leftEdge, rightEdge, width):
     else:
         return "NA"
 
+#image filename ex) [experiment name]R, start number ex) 0 or 2070
+#Return end number of image sequence
+def searchImage(fn, startNum):
+    digitNum = 5
+    counter = startNum
+    ext = ".png"
 
-#read data from LineDetect Module
-def readData():
-    IMG_NUM = 200
-    i = 0
-    print fnR
-    if os.path.isfile(fnR + "00000.png") == False:
-        print fnR + "00000.png"
-        print "open image error!"
-        exit(0)
+    prevTimestamp = 0
+    checkTimeSens = 10 #second
 
-    #elif os.path.isfile(fn + str(IMG_NUM - 1) + ".png") == False:
-    #    print fn + str(IMG_NUM - 1) + ".png"
-    #    print "MAX image number error!"
-    #    exit(0)
-    print "///read RealCamData///"
-    while i < IMG_NUM:
+    while counter < 100000:# not over 100k
+        number = str( "0" * (digitNum - len(str(counter))) )
+        checkFilename = fn + number + str(counter) + ext
+        #print checkFilename
+
+        if os.path.isfile(checkFilename) == False:
+            print "file dose not exist!", checkFilename
+            return counter - 1
+
+        if prevTimestamp == 0:
+            prevTimestamp = os.stat(checkFilename).st_mtime
+
+        timestamp = os.stat(checkFilename).st_mtime
+        diff = abs(prevTimestamp - timestamp)
+
+        if diff > checkTimeSens:
+            print "detect another sequence image!"
+            print "end sequence Num: ", counter - 1, "diff: ",diff
+            return counter - 1
+
+        prevTimestamp = timestamp
+        counter += 1
+
+def controlReadImgData():
+    startNum = 0
+    seqCount = 0
+    endNum = 0
+    expResult = []# 2D array constructed (RMSE,MinRMSE@0.01ms,AveLatency@0.01ms)
+
+    while seqCount < 100:
+        initialize()
+        if checkExistCSV(seqCount):
+            readCSVData(seqCount)
+            startNum = searchImage(fnR, startNum) + 1
+            print "start: ", startNum, "end: ", endNum
+        else:
+            endNum = searchImage(fnR, startNum)
+            print "start: ", startNum, "end: ", endNum
+            if endNum + 1 == startNum:
+                print "End sequence experiment Data!"
+                break
+            readData(startNum, endNum)
+            calcVirLinearInt(virDegArray)
+            calcVirLinearInt(realDegArray)
+            calcLinearInt(linearIntRealDegArray, realDegArray)
+            calcLinearInt(linearIntVirDegArray, virDegArray)
+            writeData(seqCount)
+            startNum = endNum + 1
+        expResult.append(controlCalcVal())
+        seqCount += 1
+
+    writeResultData(expResult)
+
+#read img data from LineDetect Module
+def readData(startNum, EndNum):
+    counter = startNum
+
+    print "///read Real Cam Data///"
+    while counter < EndNum + 1:
         #dataArray[0]:edge[0], dA[1]:edge[1], dA[2]:width
-        dataArray = detectLine(i, fnR)
+        dataArray = detectLine(counter, fnR)
         calcCenterDeg(dataArray[0], dataArray[1], dataArray[2])
         deg = calcCamDeg(dataArray[0], dataArray[1], dataArray[2])
         realDegArray.append(deg)
-        i += 1
+        counter += 1
     print "EleNum = %d" %len(realDegArray)
 
 
-    print "///read VirtualCamData///"
+    print "///read Virtual Cam Data///"
     # Initialize Flag
     global calcCenterDegFlag
     calcCenterDegFlag = False
     global FIRST_DETECT_EDGE_FLAG
     FIRST_DETECT_EDGE_FLAG = False
-    i = 0
+    counter = startNum
 
-    if os.path.isfile(fnV + "00000.png") == False:
-        print fnV + "00000.png"
-        print "open image error!"
-        exit(0)
-
-    while i < IMG_NUM:
-        dataArray = detectLine(i, fnV)
+    while counter < EndNum + 1:
+        dataArray = detectLine(counter, fnV)
         calcCenterDeg(dataArray[0], dataArray[1], dataArray[2])
         deg = calcCamDeg(dataArray[0], dataArray[1], dataArray[2])
         virDegArray.append(deg)
-        i += 1
+        counter += 1
     print "EleNum = %d" %len(virDegArray)
+
+    print "real: ", len(realDegArray),"vir: ", len(virDegArray)
+    if len(realDegArray) != len(virDegArray):
+        print "Real cam data num and Vir cam data num are not same!!"
+        exit(1)
     print "read done"
     return 1
 
+def initialize():
+    #must be initialize before use #
+    print "initialize Flag!"
+    global FIRST_DETECT_EDGE_FLAG
+    FIRST_DETECT_EDGE_FLAG = False
+    global calcCenterDegFlag
+    calcCenterDegFlag = False
+    global realDegArray
+    realDegArray = []
+    global virDegArray
+    virDegArray = []
+    global linearIntRealDegArray
+    linearIntRealDegArray = []
+    global linearIntVirDegArray
+    linearIntVirDegArray = []
+
+
 class CustomFormat(csv.excel):
     quoting   = csv.QUOTE_ALL
-    #delimiter = '\t'
+#    delimiter = "¥t"
 
 #read CSV file(row[0]:real IntP deg, row[1]: virtual IntP deg)
-def readCSVData():
-    csvFile = codecs.open(CSVFileName, "rb","utf-8")
+def readCSVData(count):
+    fn = CSVFileName + str(count) + ".csv"
+    csvFile = codecs.open(fn, "rb","utf-8")
     reader = csv.reader(csvFile, CustomFormat())
     for row in reader:
         linearIntRealDegArray.append(float(row[0]))
@@ -341,13 +425,14 @@ def readCSVData():
 
 
 #output data to CSV file
-def writeData():
+def writeData(seqCount):
     print "///write CmpCSV data///"
     tempArray = []
     i = 0
+    fn = CSVFileName + str(seqCount) + ".csv"
 
     #get URI with optional setting
-    csvFile = codecs.open(CSVFileName, "w", "utf-8")
+    csvFile = codecs.open(fn, "w", "utf-8")
     #disignate format
     writer = csv.writer(csvFile,CustomFormat() )
 
@@ -360,7 +445,31 @@ def writeData():
         tempArray = []
         i +=1
     csvFile.close()
-    print "write done:" , CSVFileName
+    print "write done:" , fn
+
+def writeResultData(*data):
+    print "///write CmpCSV data///"
+    tempArray = []
+    i = 0
+    fn = CSVFileName + ".csv"
+    #get URI with optional setting
+    csvFile = codecs.open(fn, "w", "utf-8")
+    #disignate format
+    writer = csv.writer(csvFile,CustomFormat() )
+
+    # Write Linaer Interpolation Real and Virtual data (ms)
+    # data num of Real and Vir are same
+    i = 0
+    for result in data:
+        for num in result:
+            for x in num:
+                tempArray.append(x)
+            writer.writerow(tempArray)
+            tempArray = []
+        i+=1
+    csvFile.close()
+    print "write done:" , fn
+
 
 
 # detect head of NA Pos in array from present Pos.
@@ -595,7 +704,6 @@ def plotTwoElementGraph(point1, name1, point2, name2):
     plt.ylim(-ylim, ylim)
     plt.xlim(0, 1000)
     plt.grid(True)
-    #plt.title(CSVFileName[0] + title, fontsize = 20 )
 
 #calc latency and each RMSE when shifted.
 def calcLatency(base, comparison):
@@ -704,6 +812,7 @@ def calcLatency2(base, comparison, aveLatency):
     minusShift = (aveLatency * 100) - scanArea# x0.01ms
     plusShift = (aveLatency * 100) + scanArea + 1
     calcArray = []
+    resultArray = [0,0]# MinRMSE, latency
     #index start at 0, shift start at - 10ms. So, offset needed.
     #Index of Min RMSE is latency
     #example: 900 ~ 1100 lantency:10ms
@@ -717,20 +826,27 @@ def calcLatency2(base, comparison, aveLatency):
     print "Min RMSE:", min(calcArray), "deg"
     print "latency:", latency, "ms"
 
+    resultArray[0] = min(calcArray)
+    resultArray[1] = latency
+    return resultArray
+
 
 def controlCalcVal():
     #### RMSE ####
     xMinRmse = -10
     xMaxRmse = 40 + 1
     RMSEArray = []
+    resultArray = [0,0,0]
 
     calcRealCamScale()
+    rmse = calcRMSE(linearIntRealDegArray, linearIntVirDegArray, 0)
+    resultArray[0] = rmse
 
-    print "Modified RMSE: %f" %calcRMSE(linearIntRealDegArray, linearIntVirDegArray, 0)
+    print "Modified RMSE: %f" %rmse
     for i in range(xMinRmse, xMaxRmse):
         rmse = calcRMSE(linearIntRealDegArray, linearIntVirDegArray, i)
         RMSEArray.append(rmse)
-    print "Min RMSE :%f" % min(RMSEArray)
+    print "Min RMSE@1ms :%f" % min(RMSEArray)
     latency = RMSEArray.index(min(RMSEArray)) + xMinRmse
     print "latency: %d ms" % latency
 
@@ -749,23 +865,33 @@ def controlCalcVal():
         j+=1
     print "discreteVirCamArray num", len(discreteVirCamArray)
 
-    calcLatency2(linearInt2RealDegArray, discreteVirCamArray, latency)
+    tmpArray = calcLatency2(linearInt2RealDegArray, discreteVirCamArray, latency)
+    resultArray[1] = tmpArray[0]# Min RMSE
+    resultArray[2] = tmpArray[1]# Latency @0.01ms
+
+    return resultArray
 
 
 
 if __name__ == "__main__":
     print "///mainFunc///"
-    if checkExistCSV():
-        readCSVData()
-    else:
-        readData()
-        calcVirLinearInt(virDegArray)
-        calcVirLinearInt(realDegArray)
-        calcLinearInt(linearIntRealDegArray, realDegArray)
-        calcLinearInt(linearIntVirDegArray, virDegArray)
-        writeData()
-    #   plotTwoElementGraph(linearIntRealDegArray, "Real",linearIntVirDegArray, "Virtual")
-    #   plt.show()
-    controlCalcVal()
 
-
+    """#
+    seqCount =0
+    while 1:
+        startNum = int(raw_input())
+        endNum = int(raw_input())
+        initialize()
+        #if checkExistCSV(seqCount):
+        if 0:
+            readCSVData(seqCount)
+        else:
+            readData(startNum, endNum)
+            calcVirLinearInt(virDegArray)
+            calcVirLinearInt(realDegArray)
+            calcLinearInt(linearIntRealDegArray, realDegArray)
+            calcLinearInt(linearIntVirDegArray, virDegArray)
+            writeData(seqCount)
+            controlCalcVal()
+    """#
+    controlReadImgData()
