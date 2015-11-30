@@ -51,13 +51,15 @@ Experiment name: [Render][TW][0 or 1][Pred][0 or 1][L or R]
 """#
 # base directory(same to autoMain.py directory
 BASEDIR = os.path.abspath(os.path.dirname(__file__))
-imageFolder = "/Users/kento24n452/Data/testData/SDKTW0Pred0/"
 #experiment name
-commonImageFilename = "SDKTW0Pred0"
+commonImageFilename = "SDKTW0Pred0L"
+#imageFolder = "/Users/kento24n452/Data/testData/SDKTW0Pred0/"
+imageFolder = "/Users/kento24n452/Data/cam/SDKTW0Pred0L/"
+
 fnR = imageFolder + commonImageFilename + "R"
 fnV = imageFolder + commonImageFilename + "V"
 CSVFileName = "CSV/" + commonImageFilename + "No"
-
+CSVResultFileName = "CSV/Result/" + commonImageFilename + "No"
 
 def getext(filename):
     return os.path.splitext(filename)[-1].lower()
@@ -107,17 +109,31 @@ def handleEvent():
     observer.join()
 
 
-#check if exist CSV file
+#check if exist Cmp Deg CSV file
 def checkExistCSV(count):
     fn = CSVFileName + str(count)+ ".csv"
     if os.path.exists("CSV") == False:
         print "make directory"
         os.mkdir("CSV")
     if os.path.isfile(fn) == True:
-        print "Exist CSV file! ", fn
+        print "Exist Cmp CSV file! ", fn
         return 1
     else:
         return 0
+#check if exist Result CSV file
+# RMSE, MinRMSE, Latency
+def checkExistResultCSV(count):
+    fn = CSVResultFileName + str(count)+ "Result.csv"
+    if os.path.exists("CSV/Result") == False:
+        print "make directory"
+        os.mkdir("CSV/Result")
+
+    if os.path.isfile(fn) == True:
+        print "Exist Reseul CSV file! ", fn
+        return 1
+    else:
+        return 0
+
 
 ################# DTECT EDGE ####################
 #load png img from directory. Count is img number.
@@ -135,7 +151,7 @@ def loadImage(count, filePathAndName):
     digit = "0" * (5 - counter)
 
     loadPath = filePathAndName + digit + str(count) + ext
-    print loadPath
+    #print loadPath
     #load img as gray scale
     im_gray = cv2.imread(loadPath,0)
     try:
@@ -223,7 +239,7 @@ def detectValidImage(im_bi):
             counter += 1
         i += 1
     if counter < 5 or 200 < counter :
-        print "invalid img!" , counter
+        #print "invalid img!" , counter
         return -1
     else:
         return 1
@@ -242,7 +258,7 @@ def detectLine(i, filePathAndName):
         #cv2.imwrite("saveImg/EdgeV" + str(i) + ".bmp",im_edge)
         edgeArray = scanEdgePos(im_edge)
         if edgeArray == -1:
-            print "invalid edge image!"
+            #print "invalid edge image!"
             width = -1
         else:
             dataArray[0] = edgeArray[0]
@@ -275,6 +291,25 @@ def calcCenterDeg(leftEdge, rightEdge, width):
             #print "centerDeg %f" %CENTER_DEG
             global calcCenterDegFlag
             calcCenterDegFlag = True
+
+#secoundary calc center deg
+#UPDATE linearIntDegArray
+def calcCenterDeg2():
+    print "calc center @2nd"
+    realCenter = average(linearIntRealDegArray)
+    virCenter = average(linearIntVirDegArray)
+    virOffset = realCenter - virCenter
+
+    i=0
+#   global linearIntRealDegArray
+    while i < len(linearIntRealDegArray):
+        linearIntRealDegArray[i] -= realCenter
+        i+=1
+    i=0
+#    global linearIntVirDegArray
+    while i < len(linearIntVirDegArray):
+        linearIntVirDegArray[i] -= virCenter + virOffset
+        i+=1
 
 
 def calcCamDeg(leftEdge, rightEdge, width):
@@ -328,34 +363,36 @@ def controlReadImgData():
     startNum = 0
     seqCount = 0
     endNum = 0
-    expResult = []# 2D array constructed (RMSE,MinRMSE@0.01ms,AveLatency@0.01ms)
+    #expResult = []# 2D array constructed (RMSE,MinRMSE@0.01ms,AveLatency@0.01ms)
 
-    while seqCount < 100:
+    while seqCount < 99:
+        expResult = []
         initialize()
-        if checkExistCSV(seqCount):
-            readCSVData(seqCount)
-            startNum = searchImage(fnR, startNum) + 1
-            print "start: ", startNum, "end: ", endNum
-        else:
-            endNum = searchImage(fnR, startNum)
-            print "start: ", startNum, "end: ", endNum
-            if endNum + 1 == startNum:
-                print "End sequence experiment Data!"
-                break
-            readData(startNum, endNum)
-            calcVirLinearInt(virDegArray)
-            calcVirLinearInt(realDegArray)
-            calcLinearInt(linearIntRealDegArray, realDegArray)
-            calcLinearInt(linearIntVirDegArray, virDegArray)
-            writeData(seqCount)
-            startNum = endNum + 1
-        expResult.append(controlCalcVal())
+        if checkExistResultCSV(seqCount) == 0:
+            if checkExistCSV(seqCount):
+                readCSVData(seqCount)
+                startNum = searchImage(fnR, startNum) + 1
+            else:
+                endNum = searchImage(fnR, startNum)
+                if endNum + 1 == startNum:
+                    print "End sequence experiment Data!",seqCount
+                    break
+                readData(startNum, endNum)
+                calcVirLinearInt(virDegArray)
+                calcVirLinearInt(realDegArray)
+                calcLinearInt(linearIntRealDegArray, realDegArray)
+                calcLinearInt(linearIntVirDegArray, virDegArray)
+                writeCmpDegData(seqCount)
+                startNum = endNum + 1
+            expResult.append(controlCalcVal())
+            writeResultData(seqCount, expResult)
         seqCount += 1
 
-    writeResultData(expResult)
 
 #read img data from LineDetect Module
 def readData(startNum, EndNum):
+
+    print "startNum: ", startNum,"endNum", EndNum
     counter = startNum
 
     print "///read Real Cam Data///"
@@ -368,7 +405,6 @@ def readData(startNum, EndNum):
         counter += 1
     print "EleNum = %d" %len(realDegArray)
 
-
     print "///read Virtual Cam Data///"
     # Initialize Flag
     global calcCenterDegFlag
@@ -376,7 +412,6 @@ def readData(startNum, EndNum):
     global FIRST_DETECT_EDGE_FLAG
     FIRST_DETECT_EDGE_FLAG = False
     counter = startNum
-
     while counter < EndNum + 1:
         dataArray = detectLine(counter, fnV)
         calcCenterDeg(dataArray[0], dataArray[1], dataArray[2])
@@ -425,7 +460,7 @@ def readCSVData(count):
 
 
 #output data to CSV file
-def writeData(seqCount):
+def writeCmpDegData(seqCount):
     print "///write CmpCSV data///"
     tempArray = []
     i = 0
@@ -447,11 +482,10 @@ def writeData(seqCount):
     csvFile.close()
     print "write done:" , fn
 
-def writeResultData(*data):
-    print "///write CmpCSV data///"
+def writeResultData(count, *data):
+    print "///write Result data///"
     tempArray = []
-    i = 0
-    fn = CSVFileName + ".csv"
+    fn = CSVResultFileName + str(count) + "Result.csv"
     #get URI with optional setting
     csvFile = codecs.open(fn, "w", "utf-8")
     #disignate format
@@ -823,8 +857,8 @@ def calcLatency2(base, comparison, aveLatency):
     latency = calcArray.index(min(calcArray)) + minusShift
     latency /= 100.0
     print ""
-    print "Min RMSE:", min(calcArray), "deg"
-    print "latency:", latency, "ms"
+    #print "Min RMSE:", min(calcArray), "deg"
+    #print "latency:", latency, "ms"
 
     resultArray[0] = min(calcArray)
     resultArray[1] = latency
@@ -836,17 +870,17 @@ def controlCalcVal():
     xMinRmse = -10
     xMaxRmse = 40 + 1
     RMSEArray = []
-    resultArray = [0,0,0]
+    resultArray = [0,0,0]#RMSE, MinRMSE, RemError
 
     calcRealCamScale()
     rmse = calcRMSE(linearIntRealDegArray, linearIntVirDegArray, 0)
     resultArray[0] = rmse
 
-    print "Modified RMSE: %f" %rmse
+    #print "Modified RMSE: %f" %rmse
     for i in range(xMinRmse, xMaxRmse):
         rmse = calcRMSE(linearIntRealDegArray, linearIntVirDegArray, i)
         RMSEArray.append(rmse)
-    print "Min RMSE@1ms :%f" % min(RMSEArray)
+    #print "Min RMSE@1ms :%f" % min(RMSEArray)
     latency = RMSEArray.index(min(RMSEArray)) + xMinRmse
     print "latency: %d ms" % latency
 
@@ -866,32 +900,16 @@ def controlCalcVal():
     print "discreteVirCamArray num", len(discreteVirCamArray)
 
     tmpArray = calcLatency2(linearInt2RealDegArray, discreteVirCamArray, latency)
+    #tmpArray = [1,1]
     resultArray[1] = tmpArray[0]# Min RMSE
     resultArray[2] = tmpArray[1]# Latency @0.01ms
-
+    print "/////////////////////////"
+    print "RMSE[deg]: ",resultArray[0],"Min RMSE[deg]: ", resultArray[1],"aveLatency[ms]: ",resultArray[2]
+    print "/////////////////////////"
     return resultArray
-
 
 
 if __name__ == "__main__":
     print "///mainFunc///"
-
-    """#
-    seqCount =0
-    while 1:
-        startNum = int(raw_input())
-        endNum = int(raw_input())
-        initialize()
-        #if checkExistCSV(seqCount):
-        if 0:
-            readCSVData(seqCount)
-        else:
-            readData(startNum, endNum)
-            calcVirLinearInt(virDegArray)
-            calcVirLinearInt(realDegArray)
-            calcLinearInt(linearIntRealDegArray, realDegArray)
-            calcLinearInt(linearIntVirDegArray, virDegArray)
-            writeData(seqCount)
-            controlCalcVal()
-    """#
     controlReadImgData()
+
