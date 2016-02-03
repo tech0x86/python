@@ -17,7 +17,8 @@ import matplotlib.pyplot as plt
 
 
 #######parameters########
-SearchCSVFilePath = "/Users/kento24n452/GitHub/python/CSVcontrol/CmpCSV"
+#SearchCSVFilePath = "/Users/kento24n452/GitHub/python/CSVcontrol/CmpCSV"
+SearchCSVFilePath = "/Users/kento24n452/Data/CSV"
 CSVFileName = []
 SaveGraphPath = "Graph/"
 linearIntRealDegArray = []
@@ -123,10 +124,8 @@ def controlCalcVal():
                         #0:Degree, 1:Diff, 2:Velocity, 3:Accel, 4:RMSE,
                         #5:Remaining Diff and V, 6:Moment latency and V, 7:Instantaneous latency and Deg(pixel
                         #8:Instantaneous latency + Real, 9:Remaining Diff + Real
-    #pltGraphStateArray = [1, 0, 0, 0, 1,
-     #                     1, 1, 0, 1, 1]
-    pltGraphStateArray = [0, 0, 0, 0, 0,
-                          0, 0, 1, 0, 0]
+    pltGraphStateArray = [1, 0, 0, 0, 0,
+                          0, 0, 0, 0, 0]
 
     saveGraphPathAndName = SaveGraphPath + CSVFileName[0]
     noLatencyVirCam = []
@@ -136,7 +135,7 @@ def controlCalcVal():
         plotVelocityGraph(speedArray)
         plt.show()
     plt.clf()
-    #scaling real cam after calc speed
+#scaling real cam after calc speed
     calcRealCamScale()
 
     print "-----------%s----------" %CSVFileName[0]
@@ -171,6 +170,8 @@ def controlCalcVal():
         plotAccelGraph(accelerationArray)
         plt.show()
     plt.clf()
+
+    calcRMSEZero(linearIntVirDegArray)
     print "RMSE: %f" %calcRMSE(linearIntRealDegArray, linearIntVirDegArray, 0)
     for i in range(xMinRmse, xMaxRmse):
         rmse = calcRMSE(linearIntRealDegArray, linearIntVirDegArray, i)
@@ -278,7 +279,7 @@ def calcRealCamScale():
 def calcLatency(base, comparison):
     print "///calc latency///"
     minusShift = 10
-    plusShift = 100 + 1
+    plusShift = 95 + 1
     calcArray = []
     #index start at 0, shift start at - 10ms. So, offset needed.
     #Index of Min RMSE is latency
@@ -404,9 +405,22 @@ def calcRMSE2(realCamArray, virCamArray, shiftNum):
 
     return rmse
 
+# calc RMSE(data VS 0)
+def calcRMSEZero(data):
+    #print "calc RMSE:0 vs data "
+    zeroData = []
+    k = 0
+    while k < len(data):
+        zeroData.append(0.0)
+        k+=1
+    print "zero RMSE: ",calcRMSE(data, zeroData, 0)
+
+
+
+
 
 # calc Liner Interpolation,
-# and store it to linerInt array in 1ms order
+# and store it to linerInt array in **0.01ms** order
 def calcLinearInt():
     print "///calc LinearInt///"
     linearIntDegArray = []
@@ -446,7 +460,7 @@ def calcLinearInt():
             x += 1
         counter += 1
     #print "LinearInt Calc done. count = %d" % counter
-    print "real Cam in 0.01ms", len(linearIntDegArray)
+    print "real Cam in [0.01]ms:", len(linearIntDegArray)
     #print linearIntDegArray
     return linearIntDegArray
 
@@ -628,6 +642,7 @@ def calcMomentLatency():
         i += 1
     return latencyArray
 
+#calc Instant latency and plot
 def calcMomentLatencyAtDeg(momentLatency, plotIndicater, latency):
     degPerPixel = 0.073848247
     #turntable degree range +/-
@@ -665,9 +680,26 @@ def calcMomentLatencyAtDeg(momentLatency, plotIndicater, latency):
         writeData("LatencyAndDeg",x,momentLatencyAtDegAve, momentLatencyAtDegSTDE)
         plotMomentLatencyAndDegGraph(momentLatencyAtDegAve, momentLatencyAtDegSTDE, latency, degBand)
         plt.savefig(SaveGraphPath + CSVFileName[0] + "MomentLatencyAndPixel.eps")
-        plt.savefig(SaveGraphPath + CSVFileName[0] + "MomentLatencyAndPixel.ps")
+        #plt.savefig(SaveGraphPath + CSVFileName[0] + "MomentLatencyAndPixel.ps")
         plt.show()
         plt.clf()
+
+def initialize():
+    #must be initialize before use #
+    print "initialize Flag!"
+    global FIRST_DETECT_EDGE_FLAG
+    FIRST_DETECT_EDGE_FLAG = False
+    global calcCenterDegFlag
+    calcCenterDegFlag = False
+    global realDegArray
+    realDegArray = []
+    global virDegArray
+    virDegArray = []
+    global linearIntRealDegArray
+    linearIntRealDegArray = []
+    global linearIntVirDegArray
+    linearIntVirDegArray = []
+
 
 #######Plot Graph##########
 
@@ -831,11 +863,17 @@ def plotMomentLatencyAndReal(momentLatency, real, latency):
 
 
 #moment latency is y axis, Azimuth is x axis
+#called by calcMomentLantencyAtDeg
 def plotMomentLatencyAndDegGraph(aveLatency, stdeLatency, latency, band):
     print "///plotMomentLatencyAndDegGraph///"
     degPerPixel = 0.073848247
     xRange = band/degPerPixel
     x = linspace(-xRange, xRange, (band * 2) + 1)
+
+    matA = array([x, ones(len(x))])
+    matA = matA.T
+    a,b = linalg.lstsq(matA, aveLatency)[0]
+    print "y = ", a, "x +", b
 
     yerr1 = stdeLatency #lower
     yerr2 = stdeLatency # upper bound
@@ -844,6 +882,7 @@ def plotMomentLatencyAndDegGraph(aveLatency, stdeLatency, latency, band):
     ax = fig.add_subplot(111)
     ax.errorbar(x, aveLatency, yerr = [yerr1, yerr2],
                 fmt='.', label = "latency")
+    #ax.plot(x, (a * x + b),"g--")
     ax.set_xlim(-xRange, xRange)
     ax.set_ylim(latency - 3, latency + 3)
 
@@ -885,9 +924,13 @@ def plotAccelGraph(point):
 
 if __name__ == "__main__":
     print "Calc & Create main Func"
-    csvFile = searchCSVFile()
-    readCSVData(csvFile)
-    controlCalcVal()
+    i = 0
+    while i < 1:
+        initialize()
+        csvFile = searchCSVFile()
+        readCSVData(csvFile)
+        controlCalcVal()
+        i+=1
     #createMyPred(10,26)
 
 
