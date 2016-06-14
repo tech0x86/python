@@ -41,7 +41,7 @@ linearIntRealDegArray = []
 linearIntVirDegArray = []
 
 
-#####File NAME######
+#####File NAME and directory structure in recorder PC######
 """#
 cam
 -Experiment name
@@ -52,9 +52,9 @@ Experiment name: [Render][TW][0 or 1][Pred][0 or 1][L or R]
 # base directory(same to autoMain.py directory
 BASEDIR = os.path.abspath(os.path.dirname(__file__))
 #experiment name
-commonImageFilename = "SDKTW0Pred0L"
+commonImageFilename = "SDKTW0Pred0Right"
 #imageFolder = "/Users/kento24n452/Data/testData/SDKTW0Pred0/"
-imageFolder = "/Users/kento24n452/Data/cam/SDKTW0Pred0L/"
+imageFolder = "/Users/kento24n452/Data/testData/SDKTW0Pred0Right/"
 
 fnR = imageFolder + commonImageFilename + "R"
 fnV = imageFolder + commonImageFilename + "V"
@@ -129,7 +129,7 @@ def checkExistResultCSV(count):
         os.mkdir("CSV/Result")
 
     if os.path.isfile(fn) == True:
-        print "Exist Reseul CSV file! ", fn
+        print "Exist Reseult CSV file! ", fn
         return 1
     else:
         return 0
@@ -368,10 +368,13 @@ def controlReadImgData():
     while seqCount < 99:
         expResult = []
         initialize()
+        #result CSV file does NOT exist
         if checkExistResultCSV(seqCount) == 0:
+            #CSV file exist
             if checkExistCSV(seqCount):
                 readCSVData(seqCount)
                 startNum = searchImage(fnR, startNum) + 1
+            #result csv & csv file do not exist. read img
             else:
                 endNum = searchImage(fnR, startNum)
                 if endNum + 1 == startNum:
@@ -386,6 +389,8 @@ def controlReadImgData():
                 startNum = endNum + 1
             expResult.append(controlCalcVal())
             writeResultData(seqCount, expResult)
+        else: #result file exist
+            startNum = searchImage(fnR, startNum) + 1
         seqCount += 1
 
 
