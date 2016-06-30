@@ -22,7 +22,7 @@ from watchdog.observers import Observer
 
 ########Constance#########
 #FLAME_MS = 5000.0/IMG_NUM
-FLAME_MS = 2.41545
+FLAME_MS = 5000.0/2461
 #use it when read from csv data
 #DEG_PER_PIX = 48.4555/(656*0.9756097)
 #0.07386509146341
@@ -52,9 +52,9 @@ Experiment name: [Render][TW][0 or 1][Pred][0 or 1][L or R]
 # base directory(same to autoMain.py directory
 BASEDIR = os.path.abspath(os.path.dirname(__file__))
 #experiment name
-commonImageFilename = "SDKTW0Pred0Right"
+commonImageFilename = "RealVSRealNo2"
 #imageFolder = "/Users/kento24n452/Data/testData/SDKTW0Pred0/"
-imageFolder = "/Users/kento24n452/Data/testData/SDKTW0Pred0Right/"
+imageFolder = "/Users/kento24n452/Data/cam/RealVSRealNo2/"
 
 fnR = imageFolder + commonImageFilename + "R"
 fnV = imageFolder + commonImageFilename + "V"
@@ -124,8 +124,12 @@ def checkExistCSV(count):
 # RMSE, MinRMSE, Latency
 def checkExistResultCSV(count):
     fn = CSVResultFileName + str(count)+ "Result.csv"
+    if os.path.exists("CSV") == False:
+        print "make CSV directory"
+        os.mkdir("CSV")
+
     if os.path.exists("CSV/Result") == False:
-        print "make directory"
+        print "make CSV/Result directory"
         os.mkdir("CSV/Result")
 
     if os.path.isfile(fn) == True:
@@ -162,8 +166,8 @@ def loadImage(count, filePathAndName):
     return im_gray
 
 def convert2BinaryImage(im_gray):
-    # グレースケール画像を2値画像に変換
-    mask = im_gray > 122
+    # グレースケール画像を2値画像に変換. set threthould
+    mask = im_gray > 70
     # 背景画像と同じサイズの配列生成
     im_bi = zeros((im_gray.shape[0],im_gray.shape[1]),uint8)
     # Trueの部分（背景）は白塗り
@@ -173,7 +177,7 @@ def convert2BinaryImage(im_gray):
 # detect Edge Xpos from Edge image
 def scanEdgePos(im):
     #print "///scan Edge Pos///"
-    firstExistAreaSens = 100
+    firstExistAreaSens = 300
     existAreaSens = 100
     edgePos = []
     centerXPos = int(len(im[0])/2)
@@ -265,7 +269,7 @@ def detectLine(i, filePathAndName):
             dataArray[1] = edgeArray[1]
             width = edgeArray[1] - edgeArray[0]
             dataArray[2] = width
-            print edgeArray[0]
+            #print edgeArray[0]
             #print i, width, edgeArray[0], edgeArray[1]
     # if img is invalid img,
     return dataArray
@@ -380,6 +384,9 @@ def controlReadImgData():
                 if endNum + 1 == startNum:
                     print "End sequence experiment Data!",seqCount
                     break
+                global FLAME_MS
+                FLAME_MS = 5000.0 / (endNum - startNum)
+                print "FPS: ", (endNum - startNum) / 5.0
                 readData(startNum, endNum)
                 calcVirLinearInt(virDegArray)
                 calcVirLinearInt(realDegArray)
