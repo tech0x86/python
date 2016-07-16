@@ -32,6 +32,9 @@ DEG_PER_PIX = 48.4555/656.0
 # indicate index pos area in img
 CENTER_DEG = 0
 EXIST_AREA = [0, 1000]
+#threthould of white band[pixel]
+BOTTOM_WIDTH = 15
+UPPER_WIDTH = 60
 #must be initialized before use #
 FIRST_DETECT_EDGE_FLAG = False
 calcCenterDegFlag = False
@@ -54,7 +57,7 @@ BASEDIR = os.path.abspath(os.path.dirname(__file__))
 #experiment name
 commonImageFilename = "RealVSRealNo2"
 #imageFolder = "/Users/kento24n452/Data/testData/SDKTW0Pred0/"
-imageFolder = "/Users/kento24n452/Data/cam/RealVSRealNo2/"
+imageFolder = "/Users/kento24n452/Data/cam/" + commonImageFilename + "/"
 
 fnR = imageFolder + commonImageFilename + "R"
 fnV = imageFolder + commonImageFilename + "V"
@@ -167,7 +170,7 @@ def loadImage(count, filePathAndName):
 
 def convert2BinaryImage(im_gray):
     # グレースケール画像を2値画像に変換. set threthould
-    mask = im_gray > 70
+    mask = im_gray > 120
     # 背景画像と同じサイズの配列生成
     im_bi = zeros((im_gray.shape[0],im_gray.shape[1]),uint8)
     # Trueの部分（背景）は白塗り
@@ -283,7 +286,7 @@ def detectLine(i, filePathAndName):
 def calcCenterDeg(leftEdge, rightEdge, width):
     if calcCenterDegFlag == False:
         #check whether valid data
-        if 15 < width and width < 40:
+        if BOTTOM_WIDTH < width and width < UPPER_WIDTH:
             print "find cente degree", leftEdge + width/2.0
             sum = float(leftEdge) + float(rightEdge)
             ave = sum / 2
@@ -321,7 +324,7 @@ def calcCamDeg(leftEdge, rightEdge, width):
         return 0
 
     #if valid data,
-    elif 10 < width and width < 40:
+    elif BOTTOM_WIDTH < width and width < UPPER_WIDTH:
         sum =  float(leftEdge) + float(rightEdge)
         ave = sum/2
         deg = ave * DEG_PER_PIX
@@ -778,6 +781,7 @@ def calcRealCamScale():
     scaledRealCamDeg = []
     latency = calcLatency(linearIntRealDegArray, linearIntVirDegArray)
     minRMSE = calcRMSE(linearIntRealDegArray, linearIntVirDegArray, latency)
+    # set real smaller
     while i < 500:
         tmpScaledRealCamDeg = scaledRealCamDeg
         if i==1:
@@ -793,12 +797,33 @@ def calcRealCamScale():
         if tmpRMSE < minRMSE:
             minRMSE = tmpRMSE
         else:
-            print "find scale:", ratio + scaleBandStep, " minRMSE:", minRMSE
+            print "scale:", ratio + scaleBandStep, " minRMSE:", minRMSE
             global linearIntRealDegArray
             linearIntRealDegArray = tmpScaledRealCamDeg
             break
         i += 1
-    return tmpScaledRealCamDeg
+    i = 1
+    # set real bigger
+    while i < 500:
+        tmpScaledRealCamDeg = scaledRealCamDeg
+        if i==1:
+            tmpScaledRealCamDeg = linearIntRealDegArray
+        scaledRealCamDeg = []
+        j = 0
+        while j < len(linearIntRealDegArray):
+            ratio = scale + (scaleBandStep * i)
+            scaledVal = linearIntRealDegArray[j] * ratio
+            scaledRealCamDeg.append(scaledVal)
+            j += 1
+        tmpRMSE = calcRMSE(scaledRealCamDeg, linearIntVirDegArray, latency)
+        if tmpRMSE < minRMSE:
+            minRMSE = tmpRMSE
+        else:
+            print "scale(big):", ratio - scaleBandStep, " minRMSE:", minRMSE
+            global linearIntRealDegArray
+            linearIntRealDegArray = tmpScaledRealCamDeg
+            break
+        i += 1
 
 # calc RMSE in 0.01 ms
 def calcRMSE2(realCamArray, virCamArray, shiftNum):
