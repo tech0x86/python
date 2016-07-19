@@ -27,9 +27,12 @@ myPredArray = []
 speedArray = []
 accelerationArray = []
 #Graph size
-figSize = [8.1, 5.3] #X,Y cm
+#figSize = [8.1, 6.1] #X,Y cm
+figSize = [10, 8.5] #X,Y cm
 #FPS in CmpCSV
 framePerSecond = 1000.0
+
+distanceCam2Index = 400.0
 ######CSV operate######
 
 class CustomFormat(csv.excel):
@@ -113,7 +116,7 @@ def writeData(name, data1, data2, data3):
 def controlCalcVal():
     print "///Calc Values///"
     xMinRmse = -10
-    xMaxRmse = 60 + 1
+    xMaxRmse = 50 + 1
     RMSEArray = []
     #setting Fontsize to all Graph
     plt.rcParams['font.size'] = 8
@@ -126,8 +129,10 @@ def controlCalcVal():
                         #8:Instantaneous latency + Real, 9:Remaining Diff + Real
     #pltGraphStateArray = [1, 0, 0, 0, 1,
      #                     1, 1, 0, 1, 1]
-    pltGraphStateArray = [1, 0, 0, 0, 1,
+    pltGraphStateArray = [0, 0, 0, 0, 0,
                           0, 0, 0, 0, 1]
+    #calc 0.01 resolution latency 0 or 1(slow)
+    calc001LatencyFlag = 0
 
     saveGraphPathAndName = SaveGraphPath + CSVFileName[0]
     noLatencyVirCam = []
@@ -140,6 +145,7 @@ def controlCalcVal():
     #scaling real cam after calc speed
     calcRealCamScale()
     #setRealCamZero()
+    convertDegToTrans()
 
     print "-----        ------%s----------" %CSVFileName[0]
     #### Degree ####
@@ -230,22 +236,23 @@ def controlCalcVal():
         plt.show()
     plt.clf()
 
-    #expand time reso to 0.01ms in Real
-    linearInt2RealDegArray = calcLinearInt()
-    #expand time reso to 0.01ms in Virtual
-    discreteVirCamArray = [linearIntVirDegArray[0]]
+    if calc001LatencyFlag:
+        #expand time reso to 0.01ms in Real
+        linearInt2RealDegArray = calcLinearInt()
+        #expand time reso to 0.01ms in Virtual
+        discreteVirCamArray = [linearIntVirDegArray[0]]
 
-    j = 1
-    while j < len(linearIntVirDegArray):
-        k = 1
-        while k < 100:
-            discreteVirCamArray.append("NA")
-            k+=1
-        discreteVirCamArray.append(linearIntVirDegArray[j])
-        j+=1
-    print "discreteVirCamArray num", len(discreteVirCamArray)
+        j = 1
+        while j < len(linearIntVirDegArray):
+            k = 1
+            while k < 100:
+                discreteVirCamArray.append("NA")
+                k+=1
+            discreteVirCamArray.append(linearIntVirDegArray[j])
+            j+=1
+        print "discreteVirCamArray num", len(discreteVirCamArray)
 
-    #calcLatency2(linearInt2RealDegArray, discreteVirCamArray, latency)
+        calcLatency2(linearInt2RealDegArray, discreteVirCamArray, latency)
 
 
 # calc RealCamDeg scale to fit virtual.
@@ -315,6 +322,20 @@ def setRealCamZero():
         linearIntRealDegArray[i] = 0
         i+=1
 
+def convertDegToTrans():
+    print "/// convert real and vir Deg to milli meter"
+
+    global linearIntRealDegArray
+    global linearIntVirDegArray
+    i=0
+    # T = D * tan (Deg)
+    while i < len(linearIntRealDegArray):
+        trans = distanceCam2Index * tan(deg2rad(linearIntRealDegArray[i]))
+        linearIntRealDegArray[i] = trans
+
+        trans = distanceCam2Index * tan(deg2rad(linearIntVirDegArray[i]))
+        linearIntVirDegArray[i] = trans
+        i+=1
 
 
 #calc latency and each RMSE when shifted.
@@ -345,12 +366,12 @@ def calcLatency2(base, comparison, aveLatency):
     #Index of Min RMSE is latency
     #example: 900 ~ 1100 lantency:10ms
     for i in range(minusShift, plusShift):
-        print "RMSE step:", i,
+        #print "RMSE step:", i,
         rmse = calcRMSE2(base, comparison, i)
         calcArray.append(rmse)
     latency = calcArray.index(min(calcArray)) + minusShift
     latency /= 100.0
-    print "Min RMSE:", min(calcArray), "deg"
+    print "Min RMSE:", min(calcArray), "mm"
     print "latency:", latency, "ms"
 
 
@@ -724,10 +745,10 @@ def plotTwoElementGraph(point1, name1, point2, name2, title, ylim):
 
     #plt.legend(loc = 'upper right') # show data label
     #plt.xlabel("Time[ms]")
-    #plt.ylabel("Azimuth[deg]")
+    #plt.ylabel("movement[mm]")
     #draw dashed line. (y[range], -x length, x length , style)
     plt.hlines(0, -100, 10000, linestyles = "-", lw = 0.5)
-    plt.ylim(-20, 20)
+    plt.ylim(-120, 120)
     plt.xlim(0, 5000)
     plt.grid(True)
     #plt.title(CSVFileName[0] + title, fontsize = 20 )
@@ -754,21 +775,21 @@ def plotRMSEGraph(point, xmin, xmax):
     minRMSE = min(point)
     latency = point.index(min(point)) + xmin
     x = linspace(xmin, xmax - 1, len(point))
-    plt.plot(x, point, label = "RMSE",linestyle = "-", color = "black")
+    plt.plot(x, point, label = "RMSE",linestyle = "-", color = "blue")
     plt.legend(loc = 'upper right') # show data label
     plt.xlabel("Shift Time[ms]")
-    plt.ylabel("RMSE[deg]:Real and Virtual")
+    plt.ylabel("RMSE[mm]:Real and Virtual")
     plt.vlines(0, -10, 50, linestyles="-", lw = 0.5)
-    plt.vlines(latency, -10, 1, linestyles="--", colors="red", linewidth=0.5)
+    plt.vlines(latency, -10, 3, linestyles="--", colors="red", linewidth=0.5)
 
-    annotateData = str(round(minRMSE, 2)) + "deg, " + str(latency) + "ms"
+    annotateData = str(round(minRMSE, 2)) + "mm, " + str(latency) + "ms"
     plt.annotate(annotateData,
-            xy=(latency, 0.5), xycoords='data',
+            xy=(latency, 3), xycoords='data',
             xytext=(0, +30), textcoords='offset points', fontsize=8,
             arrowprops=dict(arrowstyle="->", connectionstyle="arc3,rad=.2"))
-    plt.ylim(0, 1)
+    plt.ylim(0, 10)
     plt.grid(True)
-    plt.title(CSVFileName[0] + "Shift Time and RMSE", fontsize = 20 )
+    #plt.title(CSVFileName[0] + "Shift Time and RMSE", fontsize = 20 )
 
 
 def plotNoLateDiffAndVelocityGraph(point1,point2):
@@ -805,13 +826,12 @@ def plotNoLateDiffAndRealGraph(diff, real):
     ax2.plot(real, 'b',)
     fs_label = 8
     #ax1.set_xlabel('Time[ms]', fontsize = fs_label)
-    #ax1.set_ylabel('Difference of Azimuth[deg]', fontsize = fs_label)
+    #ax1.set_ylabel('Remaining Error[mm]', fontsize = fs_label)
     ax1.set_xlim(0, 5000)
     #invert range to (min,max)
-    ax1.set_ylim(-1, 1)
-    #ax1.set_ylim(-5, 5)
-    #ax2.set_ylabel('Angular Velocity[deg/s]', fontsize = fs_label)
-    ax2.set_ylim(-20, 20)
+    ax1.set_ylim(-7, 7)
+    #ax2.set_ylabel('Real movement[mm]', fontsize = fs_label)
+    ax2.set_ylim(-120, 120)
     plt.hlines(0, -100, 10000, linestyles="-", lw =0.5)
     ax1.grid(True)
 
