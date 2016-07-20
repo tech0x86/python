@@ -766,9 +766,9 @@ def plotTwoElementGraph(point1, name1, point2, name2):
     print "///plot Two Graph///"
     ylim = 20
     #plt.figure(figsize = (figSize[0]/2.54, figSize[1]/2.54))#inch
-    x1 = linspace(0, len(point1), len(point1))
+    x1 = linspace(0, len(point1)-1, len(point1))
     plt.plot(x1, point1, label = name1)
-    x2 = linspace(0, len(point2), len(point2))
+    x2 = linspace(0, len(point2)-1, len(point2))
     plt.plot(x2, point2, label = name2, linestyle="--")
 
     #plt.legend(loc = 'upper right') # show data label
@@ -791,7 +791,7 @@ def plotDiffGraph(point):
     #plt.ylabel("Difference of Azimuth[deg]", fontsize = 18)
     plt.hlines(0, -100, 10000, linestyles="-")
     #plt.ylim(-1, 1)
-    plt.xlim(0, 40)
+    plt.xlim(0, 10)
     plt.grid(True)
     #plt.title(CSVFileName[0] + " Difference Azimuth", fontsize = 20 )
 

@@ -18,7 +18,7 @@ import matplotlib.pyplot as plt
 
 #######parameters########
 # SearchCSVFilePath = "/Users/kento24n452/GitHub/python/transitionExperimentImage/"
-SearchCSVFilePath ="/Users/kento24n452/Data/CSV/Transition/"
+SearchCSVFilePath ="/Users/kento24n452/Data/CSV/Transition/OWD/D400"
 CSVFileName = []
 SaveGraphPath = "Graph/"
 linearIntRealDegArray = []
@@ -129,7 +129,7 @@ def controlCalcVal():
                         #8:Instantaneous latency + Real, 9:Remaining Diff + Real
     #pltGraphStateArray = [1, 0, 0, 0, 1,
      #                     1, 1, 0, 1, 1]
-    pltGraphStateArray = [0, 0, 0, 0, 0,
+    pltGraphStateArray = [1, 0, 0, 0, 1,
                           0, 0, 0, 0, 1]
     #calc 0.01 resolution latency 0 or 1(slow)
     calc001LatencyFlag = 0
@@ -142,12 +142,12 @@ def controlCalcVal():
         plotVelocityGraph(speedArray)
         plt.show()
     plt.clf()
-    #scaling real cam after calc speed
-    calcRealCamScale()
-    #setRealCamZero()
-    convertDegToTrans()
 
-    print "-----        ------%s----------" %CSVFileName[0]
+    #setRealCamZero()
+    convertDegToActualTrans()
+    calcRealCamScale()
+
+    print "-----------%s----------" %CSVFileName[0]
     #### Degree ####
     if pltGraphStateArray[0]:
         plotTwoElementGraph(linearIntRealDegArray, "Real", linearIntVirDegArray, "Virtual", "", 20)
@@ -336,6 +336,89 @@ def convertDegToTrans():
         trans = distanceCam2Index * tan(deg2rad(linearIntVirDegArray[i]))
         linearIntVirDegArray[i] = trans
         i+=1
+
+def convertDegToActualTrans():
+    print "/// convert real and vir Deg to Actual milli meter ///"
+    #1.define section, 2.linear inter polation
+    #0 ~ 90mm, len = 10, deg/10mm, deg[i], i = mm
+    realPlusTable = [
+        0.0, 1.3295716463414635, 2.659143292682927, 3.9517823932926817, 5.281354039634145, 6.5887661585365835, 7.86663224085366, 9.181430868902435, 10.507309260670729, 11.781482088414634]
+    virPlusTable = [
+        0.0, 1.2741728277439002, 2.6665298018292662, 3.9924081935975595, 5.403231440548781, 6.758655868902437, 7.99589615091463, 9.343934070121948, 10.592254115853654, 11.892279725609756]
+    realMinusTable = [
+        0.0, -1.2926391006097546, -2.622210746951218, -3.937009374999998, -5.207488948170732, -6.500128048780484, -7.789073894817074, -9.08171299542683, -10.318953277439025, -11.559886814024392]
+    virMinusTable = [
+        0.0, -1.3295716463414635, -2.6443702743902433, -4.025647484756095, -5.3552191310975585, -6.743882850609756, -8.047601714939026, -9.502744016768293, -10.769530335365854, -12.110181745426829]
+
+    global linearIntRealDegArray
+    global linearIntVirDegArray
+
+    # x [mm], y[deg]
+    # x = K( x0 + (x1-x0)(y-y0)/(y1-y0) )
+    x1Mx0 = 1
+    K = 10 #index to milli meter coefficient
+
+    i = 0
+    while i < len(linearIntRealDegArray):
+        tran = 0.0 #[mm]
+        # x0 ~ x1 = inter polation section
+
+        deg = linearIntRealDegArray[i]
+        x1 = 1
+        if deg > 0:
+            while x1 < len(realPlusTable) - 1:
+                if deg < realPlusTable[x1]:
+                    break
+                x1 += 1
+            x0 = x1 - 1
+            #print "count",i, "x1", x1
+            y1My0 = realPlusTable[x1] - realPlusTable[x0]
+            yMy0 = deg - realPlusTable[x0]
+            tran = K * (x0 + (yMy0/y1My0) )
+            linearIntRealDegArray[i] = tran
+
+        elif deg < 0:
+            while x1 < len(realMinusTable) - 1:
+                if deg > realMinusTable[x1]:
+                    break
+                x1 += 1
+            x0 = x1 - 1
+            y1My0 = realMinusTable[x1] - realMinusTable[x0]
+            yMy0 = deg - realMinusTable[x0]
+            tran = -K * (x0 + (yMy0/y1My0) )
+            linearIntRealDegArray[i] = tran
+        i += 1
+
+    i = 0
+    while i < len(linearIntVirDegArray):
+        tran = 0.0 #[mm]
+        # x0 ~ x1 = inter polation section
+
+        deg = linearIntVirDegArray[i]
+        x1 = 1
+        if deg > 0:
+            while x1 < len(virPlusTable) - 1:
+                if deg < virPlusTable[x1]:
+                    break
+                x1 += 1
+            x0 = x1 - 1
+            y1My0 = virPlusTable[x1] - virPlusTable[x0]
+            yMy0 = deg - virPlusTable[x0]
+            tran = K * (x0 + (yMy0/y1My0) )
+            linearIntVirDegArray[i] = tran
+
+        elif deg < 0:
+            while x1 < len(virMinusTable) - 1:
+                if deg > virMinusTable[x1]:
+                    break
+                x1 += 1
+            x0 = x1 - 1
+            y1My0 = virMinusTable[x1] - virMinusTable[x0]
+            yMy0 = deg - virMinusTable[x0]
+            tran = -K * (x0 + (yMy0/y1My0) )
+            linearIntVirDegArray[i] = tran
+        i += 1
+
 
 
 #calc latency and each RMSE when shifted.
@@ -777,8 +860,8 @@ def plotRMSEGraph(point, xmin, xmax):
     x = linspace(xmin, xmax - 1, len(point))
     plt.plot(x, point, label = "RMSE",linestyle = "-", color = "blue")
     plt.legend(loc = 'upper right') # show data label
-    plt.xlabel("Shift Time[ms]")
-    plt.ylabel("RMSE[mm]:Real and Virtual")
+    plt.xlabel("Shift Time [ms]")
+    plt.ylabel("RMSE [mm]: Real and Virtual")
     plt.vlines(0, -10, 50, linestyles="-", lw = 0.5)
     plt.vlines(latency, -10, 3, linestyles="--", colors="red", linewidth=0.5)
 
@@ -829,7 +912,7 @@ def plotNoLateDiffAndRealGraph(diff, real):
     #ax1.set_ylabel('Remaining Error[mm]', fontsize = fs_label)
     ax1.set_xlim(0, 5000)
     #invert range to (min,max)
-    ax1.set_ylim(-7, 7)
+    ax1.set_ylim(-5, 5)
     #ax2.set_ylabel('Real movement[mm]', fontsize = fs_label)
     ax2.set_ylim(-120, 120)
     plt.hlines(0, -100, 10000, linestyles="-", lw =0.5)
