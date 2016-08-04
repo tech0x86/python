@@ -17,8 +17,8 @@ import matplotlib.pyplot as plt
 
 
 #######parameters########
-# SearchCSVFilePath = "/Users/kento24n452/GitHub/python/transitionExperimentImage/"
-SearchCSVFilePath ="/Users/kento24n452/Data/CSV/Transition/OWD/D400"
+SearchCSVFilePath ="/Users/kento24n452/Data/CSV/Transition/preExperiment/"
+SearchCSVFilePath ="/Users/kento24n452/Data/CSV/Transition/OWD/D200/"
 CSVFileName = []
 SaveGraphPath = "Graph/"
 linearIntRealDegArray = []
@@ -32,7 +32,7 @@ figSize = [10, 8.5] #X,Y cm
 #FPS in CmpCSV
 framePerSecond = 1000.0
 
-distanceCam2Index = 400.0
+distanceCam2Index = 200.0
 ######CSV operate######
 
 class CustomFormat(csv.excel):
@@ -129,7 +129,7 @@ def controlCalcVal():
                         #8:Instantaneous latency + Real, 9:Remaining Diff + Real
     #pltGraphStateArray = [1, 0, 0, 0, 1,
      #                     1, 1, 0, 1, 1]
-    pltGraphStateArray = [1, 0, 0, 0, 1,
+    pltGraphStateArray = [0, 0, 0, 0, 0,
                           0, 0, 0, 0, 1]
     #calc 0.01 resolution latency 0 or 1(slow)
     calc001LatencyFlag = 0
@@ -144,7 +144,8 @@ def controlCalcVal():
     plt.clf()
 
     #setRealCamZero()
-    convertDegToActualTrans()
+    convertDegToTrans()
+    #convertDegToActualTrans()
     calcRealCamScale()
 
     print "-----------%s----------" %CSVFileName[0]
@@ -152,7 +153,7 @@ def controlCalcVal():
     if pltGraphStateArray[0]:
         plotTwoElementGraph(linearIntRealDegArray, "Real", linearIntVirDegArray, "Virtual", "", 20)
         #emf, eps, jpeg, jpg, pdf, png, ps, raw, rgba, svg, svgz, tif, tiff
-        plt.savefig(saveGraphPathAndName + "Deg.eps")
+        plt.savefig(saveGraphPathAndName + "Tran.eps")
         plt.show()
     plt.clf()
     #### Difference ####
@@ -200,12 +201,12 @@ def controlCalcVal():
         j += 1
     #verify?
     #calcLatency(linearIntRealDegArray, noLatencyVirCam)
-    print "calc zero latency Difference",
+    print "calc remaining error",
     NoLateDiff = calcDiffOfDeg(linearIntRealDegArray, noLatencyVirCam)
     #plotTwoElementGraph(linearIntRealDegArray, "real", noLatencyVirCam, "noLateVir", "", 20)
     if pltGraphStateArray[5]:
         plotNoLateDiffAndVelocityGraph(NoLateDiff, speedArray)
-        plt.savefig(saveGraphPathAndName + "NoLateDiff+V.eps")
+        plt.savefig(saveGraphPathAndName + "RemError+V.eps")
         plt.show()
     plt.clf()
 
@@ -232,7 +233,7 @@ def controlCalcVal():
 
     if pltGraphStateArray[9]:
         plotNoLateDiffAndRealGraph(NoLateDiff, linearIntRealDegArray)
-        plt.savefig(saveGraphPathAndName + "NoLateDiff+Real.eps")
+        plt.savefig(saveGraphPathAndName + "RemError+Real.eps")
         plt.show()
     plt.clf()
 
@@ -341,6 +342,7 @@ def convertDegToActualTrans():
     print "/// convert real and vir Deg to Actual milli meter ///"
     #1.define section, 2.linear inter polation
     #0 ~ 90mm, len = 10, deg/10mm, deg[i], i = mm
+    #Dsitance = 400mm
     realPlusTable = [
         0.0, 1.3295716463414635, 2.659143292682927, 3.9517823932926817, 5.281354039634145, 6.5887661585365835, 7.86663224085366, 9.181430868902435, 10.507309260670729, 11.781482088414634]
     virPlusTable = [
@@ -831,7 +833,7 @@ def plotTwoElementGraph(point1, name1, point2, name2, title, ylim):
     #plt.ylabel("movement[mm]")
     #draw dashed line. (y[range], -x length, x length , style)
     plt.hlines(0, -100, 10000, linestyles = "-", lw = 0.5)
-    plt.ylim(-120, 120)
+    plt.ylim(-60, 60)
     plt.xlim(0, 5000)
     plt.grid(True)
     #plt.title(CSVFileName[0] + title, fontsize = 20 )
@@ -914,7 +916,7 @@ def plotNoLateDiffAndRealGraph(diff, real):
     #invert range to (min,max)
     ax1.set_ylim(-5, 5)
     #ax2.set_ylabel('Real movement[mm]', fontsize = fs_label)
-    ax2.set_ylim(-120, 120)
+    ax2.set_ylim(-60, 60)
     plt.hlines(0, -100, 10000, linestyles="-", lw =0.5)
     ax1.grid(True)
 
