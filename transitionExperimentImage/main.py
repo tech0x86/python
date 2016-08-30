@@ -35,7 +35,7 @@ EXIST_AREA = [0, 1000]
 #threthould of white band[pixel]
 BOTTOM_WIDTH = 15
 UPPER_WIDTH = 60
-WIDTH_SENS = 4
+WIDTH_SENS = 8
 distanceCam2Index = 200.0
 
 #must be initialized before use #
@@ -855,21 +855,17 @@ def convertDegToTrans():
 
 def convertDegToActualTrans():
     print "/// convert real and vir Deg to Actual milli meter ///"
-    # 1.define section, 2.linear inter polation
-    # 0 ~ 90mm, len = 10, deg/10mm, deg[i], i = mm
-    # Dsitance = 400mm
+    #1.define section, 2.linear inter polation
+    #0 ~ 50mm, len = 6, deg/10mm, deg[i], i = mm
+    #Dsitance = 200mm
     realPlusTable = [
-        0.0, 1.3295716463414635, 2.659143292682927, 3.9517823932926817, 5.281354039634145, 6.5887661585365835,
-        7.86663224085366, 9.181430868902435, 10.507309260670729, 11.781482088414634]
+        0.0, 3.1392663871951214, 6.241600228658538, 9.307001524390243, 12.313310746951217, 15.319619969512194]
     virPlusTable = [
-        0.0, 1.2741728277439002, 2.6665298018292662, 3.9924081935975595, 5.403231440548781, 6.758655868902437,
-        7.99589615091463, 9.343934070121948, 10.592254115853654, 11.892279725609756]
+        0.0, 2.659143292682927, 5.321979839939025, 8.12885331554878, 10.599640625000005, 13.118440243902437]
     realMinusTable = [
-        0.0, -1.2926391006097546, -2.622210746951218, -3.937009374999998, -5.207488948170732,
-        -6.500128048780484, -7.789073894817074, -9.08171299542683, -10.318953277439025, -11.559886814024392]
+        0.0, -3.094947332317074, -6.1529621189024395, -9.092792759146342, -11.973531326219513, -14.776711547256102]
     virMinusTable = [
-        0.0, -1.3295716463414635, -2.6443702743902433, -4.025647484756095, -5.3552191310975585,
-        -6.743882850609756, -8.047601714939026, -9.502744016768293, -10.769530335365854, -12.110181745426829]
+        0.0, -2.5778916920731723, -5.351525876524392, -8.032828696646344, -10.629186661585369, -13.111053734756101]
 
     global linearIntRealDegArray
     global linearIntVirDegArray
@@ -877,11 +873,11 @@ def convertDegToActualTrans():
     # x [mm], y[deg]
     # x = K( x0 + (x1-x0)(y-y0)/(y1-y0) )
     x1Mx0 = 1
-    K = 10  # index to milli meter coefficient
+    K = 10 #index to milli meter coefficient
 
     i = 0
     while i < len(linearIntRealDegArray):
-        tran = 0.0  # [mm]
+        tran = 0.0 #[mm]
         # x0 ~ x1 = inter polation section
 
         deg = linearIntRealDegArray[i]
@@ -892,10 +888,10 @@ def convertDegToActualTrans():
                     break
                 x1 += 1
             x0 = x1 - 1
-            # print "count",i, "x1", x1
+            #print "count",i, "x1", x1
             y1My0 = realPlusTable[x1] - realPlusTable[x0]
             yMy0 = deg - realPlusTable[x0]
-            tran = K * (x0 + (yMy0 / y1My0))
+            tran = K * (x0 + (yMy0/y1My0) )
             linearIntRealDegArray[i] = tran
 
         elif deg < 0:
@@ -906,13 +902,13 @@ def convertDegToActualTrans():
             x0 = x1 - 1
             y1My0 = realMinusTable[x1] - realMinusTable[x0]
             yMy0 = deg - realMinusTable[x0]
-            tran = -K * (x0 + (yMy0 / y1My0))
+            tran = -K * (x0 + (yMy0/y1My0) )
             linearIntRealDegArray[i] = tran
         i += 1
 
     i = 0
     while i < len(linearIntVirDegArray):
-        tran = 0.0  # [mm]
+        tran = 0.0 #[mm]
         # x0 ~ x1 = inter polation section
 
         deg = linearIntVirDegArray[i]
@@ -925,7 +921,7 @@ def convertDegToActualTrans():
             x0 = x1 - 1
             y1My0 = virPlusTable[x1] - virPlusTable[x0]
             yMy0 = deg - virPlusTable[x0]
-            tran = K * (x0 + (yMy0 / y1My0))
+            tran = K * (x0 + (yMy0/y1My0) )
             linearIntVirDegArray[i] = tran
 
         elif deg < 0:
@@ -936,7 +932,7 @@ def convertDegToActualTrans():
             x0 = x1 - 1
             y1My0 = virMinusTable[x1] - virMinusTable[x0]
             yMy0 = deg - virMinusTable[x0]
-            tran = -K * (x0 + (yMy0 / y1My0))
+            tran = -K * (x0 + (yMy0/y1My0) )
             linearIntVirDegArray[i] = tran
         i += 1
 
@@ -1025,7 +1021,7 @@ def controlCalcVal():
     RMSEArray = []
     resultArray = [0,0,0]#RMSE, MinRMSE, RemError
     #deg to mm
-    convertDegToTrans()
+    convertDegToActualTrans()
     calcRealCamScale()
     rmse = calcRMSE(linearIntRealDegArray, linearIntVirDegArray, 0)
     resultArray[0] = rmse

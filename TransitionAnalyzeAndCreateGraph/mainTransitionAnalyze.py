@@ -17,7 +17,7 @@ import matplotlib.pyplot as plt
 
 
 #######parameters########
-SearchCSVFilePath ="/Users/kento24n452/Data/CSV/Transition/preExperiment/"
+#SearchCSVFilePath ="/Users/kento24n452/Data/CSV/Transition/preExperiment/"
 SearchCSVFilePath ="/Users/kento24n452/Data/CSV/Transition/OWD/D200/"
 CSVFileName = []
 SaveGraphPath = "Graph/"
@@ -129,7 +129,7 @@ def controlCalcVal():
                         #8:Instantaneous latency + Real, 9:Remaining Diff + Real
     #pltGraphStateArray = [1, 0, 0, 0, 1,
      #                     1, 1, 0, 1, 1]
-    pltGraphStateArray = [0, 0, 0, 0, 0,
+    pltGraphStateArray = [1, 0, 0, 0, 0,
                           0, 0, 0, 0, 1]
     #calc 0.01 resolution latency 0 or 1(slow)
     calc001LatencyFlag = 0
@@ -144,8 +144,8 @@ def controlCalcVal():
     plt.clf()
 
     #setRealCamZero()
-    convertDegToTrans()
-    #convertDegToActualTrans()
+    #convertDegToTrans()
+    convertDegToActualTrans()
     calcRealCamScale()
 
     print "-----------%s----------" %CSVFileName[0]
@@ -341,16 +341,17 @@ def convertDegToTrans():
 def convertDegToActualTrans():
     print "/// convert real and vir Deg to Actual milli meter ///"
     #1.define section, 2.linear inter polation
-    #0 ~ 90mm, len = 10, deg/10mm, deg[i], i = mm
-    #Dsitance = 400mm
+    #0 ~ 50mm, len = 6, deg/10mm, deg[i], i = mm
+    #Dsitance = 200mm
+    #Cam folder: D20Right_2
     realPlusTable = [
-        0.0, 1.3295716463414635, 2.659143292682927, 3.9517823932926817, 5.281354039634145, 6.5887661585365835, 7.86663224085366, 9.181430868902435, 10.507309260670729, 11.781482088414634]
+        0.0, 3.102333841463416, 6.226827210365855, 9.307001524390246, 12.335470274390245, 15.327006478658536]
     virPlusTable = [
-        0.0, 1.2741728277439002, 2.6665298018292662, 3.9924081935975595, 5.403231440548781, 6.758655868902437, 7.99589615091463, 9.343934070121948, 10.592254115853654, 11.892279725609756]
+        0.0, 2.8105667301829276, 5.613746951219511, 8.53141806402439, 11.301358993902443, 14.067606669207317]
     realMinusTable = [
-        0.0, -1.2926391006097546, -2.622210746951218, -3.937009374999998, -5.207488948170732, -6.500128048780484, -7.789073894817074, -9.08171299542683, -10.318953277439025, -11.559886814024392]
+        0.0, -3.1023338414634125, -6.178814900914634, -9.15927134146341, -12.073249199695121, -14.887509184451218]
     virMinusTable = [
-        0.0, -1.3295716463414635, -2.6443702743902433, -4.025647484756095, -5.3552191310975585, -6.743882850609756, -8.047601714939026, -9.502744016768293, -10.769530335365854, -12.110181745426829]
+        0.0, -2.6776095655487806, -5.466016768292683, -8.047601714939026, -10.632879916158537, -13.284636699695122]
 
     global linearIntRealDegArray
     global linearIntVirDegArray

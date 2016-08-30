@@ -42,8 +42,7 @@ realDegArray = []
 virDegArray = []
 linearIntRealDegArray = []
 linearIntVirDegArray = []
-
-
+twoByTwoDegArray = [] #[0]:real plus-deg, [1]: vir plus-deg, [2]: real minus-deg, [3]: vir minus-deg
 #####File NAME and directory structure in recorder PC######
 """#
 cam
@@ -55,9 +54,9 @@ Experiment name: [Render][TW][0 or 1][Pred][0 or 1][L or R]
 # base directory(same to autoMain.py directory
 BASEDIR = os.path.abspath(os.path.dirname(__file__))
 #experiment name
-commonImageFilename = "D40Plane"
+commonImageFilename = "D20Left_2"
 #imageFolder = "/Users/kento24n452/Data/testData/SDKTW0Pred0/"
-imageFolder = "/Users/kento24n452/Data/cam/DriftDistortion/D40Plane/"
+imageFolder = "/Users/kento24n452/Data/cam/DriftDistortion/" + commonImageFilename + "/"
 
 fnR = imageFolder + commonImageFilename + "R"
 fnV = imageFolder + commonImageFilename + "V"
@@ -391,17 +390,18 @@ def controlReadImgData():
                 calcVirLinearInt(virDegArray)
                 realAveDegArray = calcAverageDeg(realDegArray)
                 virAveDegArray = calcAverageDeg(virDegArray)
-                print realAveDegArray
-                print virAveDegArray
+                realAveDegArray[0] = virAveDegArray[0] = 0.0
+                twoByTwoDegArray.append(realAveDegArray)
+                twoByTwoDegArray.append(virAveDegArray)
 
                 plotTwoElementGraph(realAveDegArray, "real", virAveDegArray, "virtual")
-                plt.savefig(commonImageFilename + str(seqCount) + " Deg.eps")
-                plt.show()
+                #plt.savefig(commonImageFilename + str(seqCount) + " Deg.eps")
+                #plt.show()
                 plt.clf()
                 diffArray = calcDiffOfDeg(realAveDegArray, virAveDegArray)
                 plotDiffGraph(diffArray)
-                plt.savefig(commonImageFilename + str(seqCount) + " Diff.eps")
-                plt.show()
+                #plt.savefig(commonImageFilename + str(seqCount) + " Diff.eps")
+                #plt.show()
                 plt.clf()
 
                 #calcLinearInt(linearIntRealDegArray, realDegArray)
@@ -412,7 +412,11 @@ def controlReadImgData():
         else: #result file exist
             startNum = searchImage(fnR, startNum) + 1
         seqCount += 1
-
+    print "#///file name: ", commonImageFilename
+    print "realPlusTable =", twoByTwoDegArray[0]
+    print "virPlusTable =", twoByTwoDegArray[1]
+    print "realMinusTable =", twoByTwoDegArray[2]
+    print "virMinusTable =", twoByTwoDegArray[3]
 
 def calcAverageDeg(array):
     shutterCount = 10 # num of picture in 1 set
@@ -716,51 +720,6 @@ def calcLinearInt2():
 
 #########END Calc Linear Interpolation############
 
-
-# calc RMSE
-def calcRMSE(realCamArray, virCamArray, shiftNum):
-    i = 0
-    sum = 0.0
-    rmse = 0.0
-
-    if len(realCamArray) > len(virCamArray):
-        scanNum = len(virCamArray)
-    else:
-        scanNum = len(realCamArray)
-
-
-    if shiftNum == 0:
-        while i < scanNum:
-            diff = virCamArray[i] - realCamArray[i]
-            pow = math.pow(diff, 2)
-            sum += pow
-            i += 1
-        ave = sum/i
-        rmse = math.sqrt(ave)
-
-    #shift virCam to future
-    elif shiftNum > 0:
-        while i < scanNum - shiftNum:
-             diff = virCamArray[i + shiftNum] - realCamArray[i]
-             pow = math.pow(diff, 2)
-             sum += pow
-             i += 1
-        ave = sum/i
-        rmse = math.sqrt(ave)
-
-    #shift realCam to future
-    elif shiftNum < 0:
-       shiftNum *= -1
-       while i < scanNum - shiftNum:
-            diff = virCamArray[i] - realCamArray[i + shiftNum]
-            pow = math.pow(diff, 2)
-            sum += pow
-            i += 1
-       ave = sum/i
-       rmse = math.sqrt(ave)
-
-    return rmse
-
 #graph fot verification
 def plotTwoElementGraph(point1, name1, point2, name2):
     print "///plot Two Graph///"
@@ -796,21 +755,6 @@ def plotDiffGraph(point):
     #plt.title(CSVFileName[0] + " Difference Azimuth", fontsize = 20 )
 
 
-#calc latency and each RMSE when shifted.
-def calcLatency(base, comparison):
-    print "///calc latency///"
-    minusShift = 10
-    plusShift = 100 + 1
-    calcArray = []
-    #index start at 0, shift start at - 10ms. So, offset needed.
-    #Index of Min RMSE is latency
-    for i in range(-minusShift, plusShift):
-        rmse = calcRMSE(base, comparison, i)
-        calcArray.append(rmse)
-    latency = calcArray.index(min(calcArray)) - minusShift
-    print "Min RMSE:", min(calcArray), "deg"
-    print "latency:", latency, "ms"
-    return latency
 
 def calcDiffOfDeg(realCamArray, virCamArray):
     print "///calc Difference///"
@@ -831,158 +775,6 @@ def calcDiffOfDeg(realCamArray, virCamArray):
     print "Diff:%1.4f" %diff
     return diffArray
 
-
-# calc RealCamDeg scale to fit virtual.
-# present scale is real > virtual.
-def calcRealCamScale():
-    print "///calc real Cam scale///"
-    scaleBandStep = 0.001
-    scale = 1.00
-    i = 1
-    scaledRealCamDeg = []
-    latency = calcLatency(linearIntRealDegArray, linearIntVirDegArray)
-    minRMSE = calcRMSE(linearIntRealDegArray, linearIntVirDegArray, latency)
-    while i < 500:
-        tmpScaledRealCamDeg = scaledRealCamDeg
-        if i==1:
-            tmpScaledRealCamDeg = linearIntRealDegArray
-        scaledRealCamDeg = []
-        j = 0
-        while j < len(linearIntRealDegArray):
-            ratio = scale - (scaleBandStep * i)
-            scaledVal = linearIntRealDegArray[j] * ratio
-            scaledRealCamDeg.append(scaledVal)
-            j += 1
-        tmpRMSE = calcRMSE(scaledRealCamDeg, linearIntVirDegArray, latency)
-        if tmpRMSE < minRMSE:
-            minRMSE = tmpRMSE
-        else:
-            print "find scale:", ratio + scaleBandStep, " minRMSE:", minRMSE
-            global linearIntRealDegArray
-            linearIntRealDegArray = tmpScaledRealCamDeg
-            break
-        i += 1
-    return tmpScaledRealCamDeg
-
-# calc RMSE in 0.01 ms
-def calcRMSE2(realCamArray, virCamArray, shiftNum):
-    i = 0
-    sum = 0.0
-    rmse = 0.0
-    counter = 0
-    scanNum = len(realCamArray)
-    #shiftNum = aveLatency - 1
-    #store val in discrete Array
-    # Num:500k step 0.01ms
-
-    if shiftNum == 0:
-        while i < scanNum:
-            if virCamArray[i] != "NA":
-                diff = virCamArray[i] - realCamArray[i]
-                pow = math.pow(diff, 2)
-                sum += pow
-                counter +=1
-            i += 1
-        ave = sum/counter
-        rmse = math.sqrt(ave)
-
-    #shift virCam to future
-    elif shiftNum > 0:
-        while i < scanNum - shiftNum:
-             if virCamArray[i + shiftNum] != "NA":
-                diff = virCamArray[i + shiftNum] - realCamArray[i]
-                pow = math.pow(diff, 2)
-                sum += pow
-                counter +=1
-             i += 1
-        ave = sum/counter
-        rmse = math.sqrt(ave)
-
-    #shift realCam to future
-    elif shiftNum < 0:
-       shiftNum *= -1
-       while i < scanNum - shiftNum:
-            if virCamArray[i] != "NA":
-                diff = virCamArray[i] - realCamArray[i + shiftNum]
-                pow = math.pow(diff, 2)
-                sum += pow
-                counter += 1
-            i += 1
-       ave = sum/counter
-       rmse = math.sqrt(ave)
-
-    return rmse
-
-
-#calc latency more resolution
-#ave latanecy >= 1
-def calcLatency2(base, comparison, aveLatency):
-    print "///calc latency///"
-    scanArea = 50
-    minusShift = (aveLatency * 100) - scanArea# x0.01ms
-    plusShift = (aveLatency * 100) + scanArea + 1
-    calcArray = []
-    resultArray = [0,0]# MinRMSE, latency
-    #index start at 0, shift start at - 10ms. So, offset needed.
-    #Index of Min RMSE is latency
-    #example: 900 ~ 1100 lantency:10ms
-    for i in range(minusShift, plusShift):
-        print "RMSE step:", i,
-        rmse = calcRMSE2(base, comparison, i)
-        calcArray.append(rmse)
-    latency = calcArray.index(min(calcArray)) + minusShift
-    latency /= 100.0
-    print ""
-    #print "Min RMSE:", min(calcArray), "deg"
-    #print "latency:", latency, "ms"
-
-    resultArray[0] = min(calcArray)
-    resultArray[1] = latency
-    return resultArray
-
-
-def controlCalcVal():
-    #### RMSE ####
-    xMinRmse = -10
-    xMaxRmse = 40 + 1
-    RMSEArray = []
-    resultArray = [0,0,0]#RMSE, MinRMSE, RemError
-
-    calcRealCamScale()
-    rmse = calcRMSE(linearIntRealDegArray, linearIntVirDegArray, 0)
-    resultArray[0] = rmse
-
-    #print "Modified RMSE: %f" %rmse
-    for i in range(xMinRmse, xMaxRmse):
-        rmse = calcRMSE(linearIntRealDegArray, linearIntVirDegArray, i)
-        RMSEArray.append(rmse)
-    #print "Min RMSE@1ms :%f" % min(RMSEArray)
-    latency = RMSEArray.index(min(RMSEArray)) + xMinRmse
-    print "latency: %d ms" % latency
-
-    #expand time reso to 0.01ms in Real
-    linearInt2RealDegArray = calcLinearInt2()
-    #expand time reso to 0.01ms in Virtual
-    discreteVirCamArray = [linearIntVirDegArray[0]]
-
-    j = 1
-    while j < len(linearIntVirDegArray):
-        k = 1
-        while k < 100:
-            discreteVirCamArray.append("NA")
-            k+=1
-        discreteVirCamArray.append(linearIntVirDegArray[j])
-        j+=1
-    print "discreteVirCamArray num", len(discreteVirCamArray)
-
-    tmpArray = calcLatency2(linearInt2RealDegArray, discreteVirCamArray, latency)
-    #tmpArray = [1,1]
-    resultArray[1] = tmpArray[0]# Min RMSE
-    resultArray[2] = tmpArray[1]# Latency @0.01ms
-    print "/////////////////////////"
-    print "RMSE[deg]: ",resultArray[0],"Min RMSE[deg]: ", resultArray[1],"aveLatency[ms]: ",resultArray[2]
-    print "/////////////////////////"
-    return resultArray
 
 
 if __name__ == "__main__":
