@@ -6,8 +6,7 @@ This program automatically calcs AveLatency, RMSE, MinRMSE.
 1: observe folder by watchdog
 2: load proper image
 3: use modified conventional method
-"""#
-
+ """#
 import time
 from numpy import *
 import os
@@ -35,7 +34,7 @@ EXIST_AREA = [0, 1000]
 #threthould of white band[pixel]
 BOTTOM_WIDTH = 15
 UPPER_WIDTH = 60
-WIDTH_SENS = 8
+WIDTH_SENS = 16
 distanceCam2Index = 200.0
 
 #must be initialized before use #
@@ -60,6 +59,7 @@ BASEDIR = os.path.abspath(os.path.dirname(__file__))
 #experiment name
 commonImageFilename = "SDKTW0Pred0Right"
 #imageFolder = "/Users/kento24n452/Data/testData/SDKTW0Pred0/"
+imageFolder = "/Users/kento24n452/Data/testData/SDKTW0Pred0/"
 imageFolder = "/Users/kento24n452/Data/cam/" + commonImageFilename + "/"
 
 fnR = imageFolder + commonImageFilename + "R"

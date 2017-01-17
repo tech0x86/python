@@ -54,7 +54,7 @@ Experiment name: [Render][TW][0 or 1][Pred][0 or 1][L or R]
 # base directory(same to autoMain.py directory
 BASEDIR = os.path.abspath(os.path.dirname(__file__))
 #experiment name
-commonImageFilename = "D20Left_2"
+commonImageFilename = "D20Left_4"
 #imageFolder = "/Users/kento24n452/Data/testData/SDKTW0Pred0/"
 imageFolder = "/Users/kento24n452/Data/cam/DriftDistortion/" + commonImageFilename + "/"
 
@@ -180,7 +180,7 @@ def convert2BinaryImage(im_gray):
 def scanEdgePos(im):
     #print "///scan Edge Pos///"
     firstExistAreaSens = 300
-    existAreaSens = 100
+    existAreaSens = 200
     edgePos = []
     centerXPos = int(len(im[0])/2)
     #print EXIST_AREA[0], EXIST_AREA[1]
@@ -396,7 +396,7 @@ def controlReadImgData():
 
                 plotTwoElementGraph(realAveDegArray, "real", virAveDegArray, "virtual")
                 #plt.savefig(commonImageFilename + str(seqCount) + " Deg.eps")
-                #plt.show()
+                plt.show()
                 plt.clf()
                 diffArray = calcDiffOfDeg(realAveDegArray, virAveDegArray)
                 plotDiffGraph(diffArray)

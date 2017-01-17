@@ -42,6 +42,7 @@ class CustomFormat(csv.excel):
 #return file path + CSVfilename of selected index
 def searchCSVFile():
     print "///search CSV files///"
+    print SearchCSVFilePath
     fileArray =[]
     fileNameArray = []
     CSVFileCounter = 0
@@ -340,10 +341,12 @@ def convertDegToTrans():
 
 def convertDegToActualTrans():
     print "/// convert real and vir Deg to Actual milli meter ///"
+    print "[mm][mm][mm][mm][mm][mm]"
     #1.define section, 2.linear inter polation
     #0 ~ 50mm, len = 6, deg/10mm, deg[i], i = mm
     #Dsitance = 200mm
-    #Cam folder: D20Right_2
+    '''
+    print "Cam folder: D20Right_2"
     realPlusTable = [
         0.0, 3.102333841463416, 6.226827210365855, 9.307001524390246, 12.335470274390245, 15.327006478658536]
     virPlusTable = [
@@ -352,6 +355,23 @@ def convertDegToActualTrans():
         0.0, -3.1023338414634125, -6.178814900914634, -9.15927134146341, -12.073249199695121, -14.887509184451218]
     virMinusTable = [
         0.0, -2.6776095655487806, -5.466016768292683, -8.047601714939026, -10.632879916158537, -13.284636699695122]
+    '''
+
+    #file name:  D20Left_2
+    realPlusTable = [0.0, 3.131879878048783, 6.241600228658538, 9.343934070121948, 12.405642111280493, 15.37501878810976]
+    virPlusTable = [0.0, 2.4116952362804867, 5.166863147865852, 7.86663224085366, 10.610720388719512, 13.225544626524387]
+    realMinusTable = [0.0, -3.080174314024389, -6.167735137195121, -9.15927134146341, -12.069555945121952, -14.883815929878043]
+    virMinusTable = [0.0, -2.7330083841463413, -5.514029077743902, -8.213798170731707, -11.039137919207317, -13.886637195121953]
+
+    # ///file name:  D20Left_4
+    realPlusTable = [0.0, 3.043241768292682, 6.056937500000001, 9.052166958841463, 12.040009908536588,
+                     14.95029451219512]
+    virPlusTable = [0.0, 2.766247675304878, 5.406924695121951, 8.276583498475613, 10.954193064024388,
+                    13.757373285060979]
+    realMinusTable = [0.0, -2.991536204268293, -5.979379153963416, -8.893357012195123, -11.707616996951218,
+                      -14.440625381097561]
+    virMinusTable = [0.0, -2.7994869664634146, -5.610053696646341, -8.42431368140244, -10.920953772865854,
+                     -13.617029611280492]
 
     global linearIntRealDegArray
     global linearIntVirDegArray
@@ -745,7 +765,7 @@ def createMyPred(predtime, delay):
 
 def calcMomentLatency():
     i = 0
-    scanNum = 50
+    scanNum = 70
     latencyArray = []
     tmpLatency = []
     #scan real data
@@ -961,13 +981,13 @@ def plotMomentLatencyAndReal(momentLatency, real, latency):
     fs_label = 8
     #ax1.set_xlabel('Time[ms]', fontsize = fs_label)
     #ax1.set_ylabel('Latency at the each moment[ms]', fontsize = fs_label)
-    ax1.set_xlim(0, 1000)
+    ax1.set_xlim(0, 5000)
     ax1.set_ylim(-10, 35)
     #ax1.set_ylim(-10, 10)
     #plt.hlines(latency, -100, 10000, linestyles="-", color ="red",lw =0.5)
 
     #ax2.set_ylabel('Angular Velocity[deg/s]', fontsize = fs_label)
-    ax2.set_ylim(-20, 20)
+    ax2.set_ylim(-70, 70)
     plt.hlines(0, -100, 10000, linestyle="-", lw =0.5)
 
     ax1.grid(True)
