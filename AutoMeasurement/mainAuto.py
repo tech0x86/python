@@ -52,9 +52,9 @@ Experiment name: [Render][TW][0 or 1][Pred][0 or 1][L or R]
 # base directory(same to autoMain.py directory
 BASEDIR = os.path.abspath(os.path.dirname(__file__))
 #experiment name
-commonImageFilename = "SDKTW0Pred0L"
+commonImageFilename = "RealVSRealNo2"
 #imageFolder = "/Users/kento24n452/Data/testData/SDKTW0Pred0/"
-imageFolder = "/Users/kento24n452/Data/cam/SDKTW0Pred0L/"
+imageFolder = "/Users/kento24n452/Data/cam/RealVSRealNo2/"
 
 fnR = imageFolder + commonImageFilename + "R"
 fnV = imageFolder + commonImageFilename + "V"
@@ -368,6 +368,7 @@ def controlReadImgData():
     while seqCount < 99:
         expResult = []
         initialize()
+        checkExistCSV(seqCount)#make dir
         if checkExistResultCSV(seqCount) == 0:
             if checkExistCSV(seqCount):
                 readCSVData(seqCount)
@@ -386,6 +387,8 @@ def controlReadImgData():
                 startNum = endNum + 1
             expResult.append(controlCalcVal())
             writeResultData(seqCount, expResult)
+        else :
+            startNum = searchImage(fnR, startNum) + 1
         seqCount += 1
 
 

@@ -54,7 +54,7 @@ Experiment name: [Render][TW][0 or 1][Pred][0 or 1][L or R]
 # base directory(same to autoMain.py directory
 BASEDIR = os.path.abspath(os.path.dirname(__file__))
 #experiment name
-commonImageFilename = "D20Left_4"
+commonImageFilename = "D20Left_5"
 #imageFolder = "/Users/kento24n452/Data/testData/SDKTW0Pred0/"
 imageFolder = "/Users/kento24n452/Data/cam/DriftDistortion/" + commonImageFilename + "/"
 

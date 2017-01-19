@@ -744,7 +744,6 @@ def calcRMSE(realCamArray, virCamArray, shiftNum):
             i += 1
        ave = sum/i
        rmse = math.sqrt(ave)
-
     return rmse
 
 #graph fot verification

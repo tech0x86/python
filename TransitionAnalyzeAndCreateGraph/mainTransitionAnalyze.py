@@ -13,8 +13,8 @@ import os, os.path
 import csv
 import codecs
 from numpy import *
-import matplotlib.pyplot as plt
-
+#import matplotlib.pyplot as plt
+from matplotlib import pyplot as plt
 
 #######parameters########
 #SearchCSVFilePath ="/Users/kento24n452/Data/CSV/Transition/preExperiment/"
@@ -131,7 +131,7 @@ def controlCalcVal():
     #pltGraphStateArray = [1, 0, 0, 0, 1,
      #                     1, 1, 0, 1, 1]
     pltGraphStateArray = [1, 0, 0, 0, 0,
-                          0, 0, 0, 0, 1]
+                          0, 0, 0, 0, 0]
     #calc 0.01 resolution latency 0 or 1(slow)
     calc001LatencyFlag = 0
 
