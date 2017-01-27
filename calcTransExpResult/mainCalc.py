@@ -12,7 +12,7 @@ from statsmodels.stats.multicomp import pairwise_tukeyhsd
 #experimentName = "SDK14RightD20"
 # RealVSRealD20: [deg]
 # index=0: real vs real, 1~4: Left, 5~9: Right
-experimentNameArray = ["RealVSRealD20",
+experimentNameArray = [#""RealVSRealD20",
                        "SDK044LeftT0P0D20_4", "SDK044LeftT0P1D20_2", "SDK044LeftT1P1D20_3", "SDK14LeftD20_4",
                        "SDK044RightT0P0D20", "SDK044RightT0P1D20", "SDK044RightT1P1D20", "SDK14RightD20_2"
                        ]
@@ -276,20 +276,64 @@ def checkExistenceOfStatsCSV(name):
     else:
         return 0
 
+# return data for turkey:
+# left: min rmse, latency, right: min rmse, latency
 def setDataForTurkey(totalResult):
-    minRMSE = []
-    latency = []
+    leftMinRMSE = []
+    leftLatency = []
+    rightMinRMSE = []
+    rightLatency = []
+    turkeyData = []
 
     i = 0
     for exp in totalResult:
         # skip Verify Experiment result
-        if i != 0:
-            minRMSE.append(exp[1])
-            latency.append(exp[2])
-            #print "min RMSE", exp[1]
+        if i < 4:
+            leftMinRMSE.append(exp[1])
+            leftLatency.append(exp[2])
+            #print "min RMSE", average(exp[1])
+        elif i < len(totalResult):
+            rightMinRMSE.append(exp[1])
+            rightLatency.append(exp[2])
         i += 1
+    turkeyData.append(leftMinRMSE)
+    turkeyData.append(leftLatency)
+    turkeyData.append(rightMinRMSE)
+    turkeyData.append(rightLatency)
+    return turkeyData
+
+
+def calcTurkey(dataArray, indexArray):
+    sumData = []
+    for data in dataArray:
+        sumData += data
+
+    #convert to np.array form
+    hsdData = array(sumData)
+    hsdIdx = array(indexArray)
+    #print hsdData, hsdIdx
+    #print "aka. Turkey-kramer method"
+    print pairwise_tukeyhsd(hsdData, hsdIdx, alpha=0.05)
+
+
+    #print statsmodels.sandbox.stats.multicomp.TukeyHSDResults()
+
+
+def setIndexForTurkey(dataArray):
+    groupCount = 0
+    indexArray = []
+
+    for data in dataArray:
+        #print "data:",data
+        for num in data:
+            indexArray.append(groupCount)
+        groupCount += 1
+    #print indexArray
+    return indexArray
+
 
 def setDataForErrorGraph(totalResult):
+    print "set Data for error graph"
     aveMinRMSE = []
     stdeMinRMSE = []
     aveLatency = []
@@ -310,8 +354,8 @@ def setDataForErrorGraph(totalResult):
     result.append(stdeLatency)
     # min RMSE(ave, stde), latency(ave, stde)
 
-    print "ave min RMSE, stde min RMSE, ave latency, stde latency"
-    print result
+    #print "ave min RMSE, stde min RMSE, ave latency, stde latency"
+    #print result
     return result
 
 def plotLatencyErrorBarGraph(valueArray, errorArray):
@@ -324,7 +368,7 @@ def plotLatencyErrorBarGraph(valueArray, errorArray):
 
     plt.xlim(1 -1, len(valueArray) +1)
     plt.hlines(0, -100, 10000, linestyles="-")
-    plt.ylim(-3, 40)
+    plt.ylim(-5, 40)
     plt.grid(True)
     plt.savefig("latencyErrorGraph.eps")
     plt.show()
@@ -351,6 +395,7 @@ def plotMinRMSEErrorBarGraph(valueArray, errorArray):
 if __name__ == "__main__":
     print "///mainFunc///"
     resultOfExperimentSeries = []
+    turkeyNameGroup = ["left min RMSE","left Latency","right min RMSE", "right Latency"]
 
     i = 0
     for name in experimentNameArray:
@@ -366,6 +411,14 @@ if __name__ == "__main__":
 
     twoGraphData = setDataForErrorGraph(resultOfExperimentSeries)
     # (value array, error array)
-    #plotMinRMSEErrorBarGraph(twoGraphData[0], twoGraphData[1])
-    #plotLatencyErrorBarGraph(twoGraphData[2], twoGraphData[3])
-    setDataForTurkey(resultOfExperimentSeries)
+    plotMinRMSEErrorBarGraph(twoGraphData[0], twoGraphData[1])
+    plotLatencyErrorBarGraph(twoGraphData[2], twoGraphData[3])
+    turkeyData = setDataForTurkey(resultOfExperimentSeries)
+
+    i=0
+    while i < len(turkeyData):
+        print turkeyNameGroup[i]
+        index = setIndexForTurkey(turkeyData[i])
+        calcTurkey(turkeyData[i], index)
+        i += 1
+
