@@ -13,12 +13,12 @@ import os, os.path
 import csv
 import codecs
 from numpy import *
-#import matplotlib.pyplot as plt
 from matplotlib import pyplot as plt
 
 #######parameters########
-#SearchCSVFilePath ="/Users/kento24n452/Data/CSV/Transition/preExperiment/"
-SearchCSVFilePath ="/Users/kento24n452/Data/CSV/Transition/OWD/D200/"
+SearchCSVFilePath ="/Users/kento24n452/Data/CSV/Transition/preExperiment/"
+#SearchCSVFilePath ="/Users/kento24n452/Data/CSV/Transition/OWD/D200/"
+#SearchCSVFilePath ="/Users/kento24n452/Data/CSV/Rotation/RealVSReal/"
 CSVFileName = []
 SaveGraphPath = "Graph/"
 linearIntRealDegArray = []
@@ -130,8 +130,8 @@ def controlCalcVal():
                         #8:Instantaneous latency + Real, 9:Remaining Diff + Real
     #pltGraphStateArray = [1, 0, 0, 0, 1,
      #                     1, 1, 0, 1, 1]
-    pltGraphStateArray = [1, 0, 0, 0, 0,
-                          0, 0, 0, 0, 0]
+    pltGraphStateArray = [0, 0, 0, 0, 0,
+                          0, 0, 0, 0, 1]
     #calc 0.01 resolution latency 0 or 1(slow)
     calc001LatencyFlag = 0
 
@@ -144,10 +144,10 @@ def controlCalcVal():
         plt.show()
     plt.clf()
 
-    #setRealCamZero()
-    #convertDegToTrans()
-    convertDegToActualTrans()
-    calcRealCamScale()
+    setRealCamZero()
+    convertDegToTrans()
+    #convertDegToActualTrans()
+    #calcRealCamScale()
 
     print "-----------%s----------" %CSVFileName[0]
     #### Degree ####
@@ -166,10 +166,10 @@ def controlCalcVal():
     plt.clf()
     AbsDiffSTD = std(calcABSDiffOfDeg(linearIntRealDegArray, linearIntVirDegArray))
     #standard deviation
-    print "AbsDiffSTD: %f" %AbsDiffSTD
+    #print "AbsDiffSTD: %f" %AbsDiffSTD
     AbsDiffSTDE = AbsDiffSTD/sqrt(len(linearIntRealDegArray))
     #standard error
-    print "AbsDiffSTDE: %f" %AbsDiffSTDE
+    #print "AbsDiffSTDE: %f" %AbsDiffSTDE
 
 
     if pltGraphStateArray[2]:
@@ -865,11 +865,11 @@ def plotDiffGraph(point):
     #linspace(開始値，終了値，分割数)”で，線形数列を作成。
     x = linspace(0, len(point), len(point))
     plt.plot(point, label = "Difference", linewidth=1)
-    plt.legend(loc = 'upper right') # show data label
+    #plt.legend(loc = 'upper right') # show data label
     plt.xlabel("Time[ms]", fontsize = 18)
     plt.ylabel("Difference of Azimuth[deg]", fontsize = 18)
     plt.hlines(0, -100, 10000, linestyles="-")
-    #plt.ylim(-1, 1)
+    #plt.ylim(-0.5, 0.5)
     plt.xlim(0, 5000)
     plt.grid(True)
     #plt.title(CSVFileName[0] + " Difference Azimuth", fontsize = 20 )
@@ -924,7 +924,7 @@ def plotNoLateDiffAndRealGraph(diff, real):
     print "///plotNolateDiffAndReal///"
     #In 2axis graph, it is hard to paste label. therefore, use eazy draw to ps file
 
-    fig = plt.figure(figsize = (figSize[0]/2.54, figSize[1]/2.54))#inch
+    fig = plt.figure(figsize = (figSize[0]/2.54, figSize[1]/2.54),linewidth=1)#inch
     ax1 = fig.add_subplot(111)
     ax2 = ax1.twinx()
 
@@ -934,10 +934,14 @@ def plotNoLateDiffAndRealGraph(diff, real):
     #ax1.set_xlabel('Time[ms]', fontsize = fs_label)
     #ax1.set_ylabel('Remaining Error[mm]', fontsize = fs_label)
     ax1.set_xlim(0, 5000)
-    #invert range to (min,max)
-    ax1.set_ylim(-5, 5)
+    realYlim = max(real) * 1.2
+    remErrYlim = max(diff) * 1.2
+    #remErrYlim = 1.5
+    ax1.set_ylim(-remErrYlim, remErrYlim)
     #ax2.set_ylabel('Real movement[mm]', fontsize = fs_label)
-    ax2.set_ylim(-60, 60)
+    #ax2.set_ylim(-60, 60)
+    #ax2.set_ylim(-17, 17) # rotation
+    ax2.set_ylim(-realYlim, realYlim)
     plt.hlines(0, -100, 10000, linestyles="-", lw =0.5)
     ax1.grid(True)
 
